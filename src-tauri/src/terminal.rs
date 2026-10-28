@@ -257,6 +257,20 @@ mod tests {
                 .cols,
             110
         );
+        #[cfg(windows)]
+        for id in [first.id, second.id] {
+            // ConPTY waits for the terminal's cursor-position reply before starting the shell.
+            let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+            let mut startup = String::new();
+            while std::time::Instant::now() < deadline {
+                startup.push_str(&String::from_utf8_lossy(&terminals.read(id).unwrap().data));
+                if startup.contains("\u001b[6n") {
+                    terminals.write(id, "\u001b[1;1R".into()).unwrap();
+                    break;
+                }
+                std::thread::sleep(std::time::Duration::from_millis(20));
+            }
+        }
         #[cfg(unix)]
         terminals
             .write(

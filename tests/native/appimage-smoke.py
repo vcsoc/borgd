@@ -269,6 +269,8 @@ def main():
                 js("document.querySelector('[data-route=\"settings\"]').click(); document.querySelector('[data-action=\"appearance-reset\"]').click()")
                 assert js("return getComputedStyle(document.documentElement).fontSize==='14px'")
                 print("PASS: native appearance preference survives reload and resets to the JetBrains Mono 14px default")
+                assert js("const bar=document.querySelector('.toolbar').getBoundingClientRect(); const center=bar.top+bar.height/2; return [...document.querySelectorAll('.top-brand strong, .top-brand .version, .brand-tagline, .engine-status, .engine-status > span, .top-icon, .top-icon svg')].filter(el=>el.getBoundingClientRect().width>0).every(el=>{const box=el.getBoundingClientRect(); return Math.abs(box.top+box.height/2-center)<=1})")
+                print("PASS: native toolbar branding, badge, Borg status and controls share a centered alignment")
                 js("document.dispatchEvent(new KeyboardEvent('keydown',{key:'+',ctrlKey:true,bubbles:true,cancelable:true}))")
                 until(lambda: js("return document.documentElement.dataset.zoom === '1.1'"))
                 js("document.dispatchEvent(new KeyboardEvent('keydown',{key:'0',ctrlKey:true,bubbles:true,cancelable:true}))")

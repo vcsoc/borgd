@@ -126,3 +126,21 @@ export function analyticsView(
     bytes,
   )}<p class="chart-note">Deduplicated stored bytes from Borg; uninspected repositories are excluded.</p><button class="text-button chart-inspect" data-route="repositories">Inspect repositories &rarr;</button></figure></div><p class="analytics-disclosure">Based on retained operation history (up to 200 operations), not complete backup coverage. Empty calendar days mean no retained record. No charts use sample data.</p></section>`;
 }
+
+export function repositoryRhythm(
+  history: History[],
+  stored?: number,
+  now = new Date(),
+) {
+  const days = backupAnalytics(history, now).trend;
+  const total = days.reduce((sum, day) => sum + day.count, 0);
+  const failed = days.reduce((sum, day) => sum + day.failed, 0);
+  const max = Math.max(1, ...days.map((day) => day.count));
+  const path = days
+    .map(
+      (day, index) =>
+        `${index ? "L" : "M"}${4 + (index * 252) / 29} ${45 - (day.count * 36) / max}`,
+    )
+    .join(" ");
+  return `<div class="repo-rhythm"><div class="mini-caption"><span>Backup rhythm &middot; 30 days</span><span>${total} runs &middot; ${failed} failed &middot; ${bytes(stored)} stored</span></div><svg viewBox="0 0 260 52" preserveAspectRatio="none" role="img" aria-label="${total} recorded backup attempts, ${failed} failed, last 30 local calendar days"><path d="M4 45 H256" stroke="var(--line)" fill="none"/><path d="${path}" fill="none" stroke="var(--chart-ok)" stroke-width="1.8" vector-effect="non-scaling-stroke"/></svg>${total ? "" : '<span class="mini-empty">No retained backup runs in this period</span>'}</div>`;
+}

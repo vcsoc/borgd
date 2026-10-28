@@ -7,7 +7,7 @@ test("larger default text and appearance controls apply and persist font prefere
     await page.evaluate(
       () => getComputedStyle(document.documentElement).fontSize,
     ),
-  ).toBe("15px");
+  ).toBe("14px");
   await page
     .getByRole("button", { name: "Settings & help", exact: true })
     .click();
@@ -41,10 +41,10 @@ test("larger default text and appearance controls apply and persist font prefere
   await page
     .getByRole("button", { name: "Reset appearance", exact: true })
     .click();
-  await expect(page.locator("#appearance-size")).toHaveValue("15");
+  await expect(page.locator("#appearance-size")).toHaveValue("14");
   expect(
     await page.evaluate(
       () => getComputedStyle(document.documentElement).fontSize,
     ),
-  ).toBe("15px");
+  ).toBe("14px");
 });

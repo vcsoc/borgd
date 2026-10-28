@@ -19,10 +19,10 @@ export function appearance() {
         : "mono",
       size: Number.isFinite(saved.size)
         ? Math.max(12, Math.min(20, saved.size))
-        : 15,
+        : 14,
     };
   } catch {
-    return { family: "mono", size: 15 };
+    return { family: "mono", size: 14 };
   }
 }
 export function applyAppearance() {
@@ -60,7 +60,7 @@ export function appearanceView() {
   )
     .map(
       (size) =>
-        `<option value="${size}" ${current.size === size ? "selected" : ""}>${size} px${size === 15 ? " (default)" : ""}</option>`,
+        `<option value="${size}" ${current.size === size ? "selected" : ""}>${size} px${size === 14 ? " (default)" : ""}</option>`,
     )
     .join(
       "",

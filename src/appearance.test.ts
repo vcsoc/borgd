@@ -15,10 +15,10 @@ beforeEach(() => {
 });
 afterEach(() => vi.unstubAllGlobals());
 it("uses the larger default and recovers from malformed stored preferences", () => {
-  expect(appearance()).toEqual({ family: "mono", size: 15 });
+  expect(appearance()).toEqual({ family: "mono", size: 14 });
   stored = "invalid JSON";
   applyAppearance();
-  expect(style.fontSize).toBe("15px");
+  expect(style.fontSize).toBe("14px");
 });
 it("persists supported font families and applies the requested base size", () => {
   saveAppearance("mono", 18);

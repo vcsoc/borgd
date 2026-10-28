@@ -1,21 +1,22 @@
-MIT License
+borgd License
 
-Copyright (c) 2026 borgd contributors
+Copyright (c) 2026 Chris Visser. All rights reserved except as expressly granted below.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+1. Free use
+Permission is granted to use the unmodified software free of charge, for personal or commercial purposes.
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+2. Modifications
+Any modification, adaptation, or creation of derivative works requires prior written approval from Chris Visser, the developer.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+3. Sale and resale
+Any sale, resale, or distribution of this software or a modified version for a fee requires prior written approval from Chris Visser. Free use does not grant a right to sell or resell the software.
+
+4. Notices and third-party components
+This license and copyright notice must be retained in any distribution approved by the developer. Third-party components remain subject to their respective licenses; this license does not restrict rights granted by those separate licenses.
+
+5. Disclaimer
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE DEVELOPER OR COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR ITS USE.
+
+Project and approval contact: https://github.com/vcsoc/borgd
+
+These terms apply to this revision and later revisions distributed under this license. They do not revoke permissions already granted for earlier revisions distributed under the MIT License.

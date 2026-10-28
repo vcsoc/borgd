@@ -166,6 +166,35 @@ async fn terminal_close(
         .map_err(|e| e.to_string())?
 }
 
+#[tauri::command]
+fn open_project_url() -> Result<(), String> {
+    const URL: &str = "https://github.com/vcsoc/borgd";
+    #[cfg(any(target_os = "linux", target_os = "macos", target_os = "windows"))]
+    fn launch(program: &str, args: &[&str]) -> std::io::Result<std::process::Child> {
+        let mut command = std::process::Command::new(program);
+        host::configure(&mut command);
+        command.args(args).spawn()
+    }
+    #[cfg(target_os = "linux")]
+    let result = launch("xdg-open", &[URL]);
+    #[cfg(target_os = "macos")]
+    let result = launch("open", &[URL]);
+    #[cfg(target_os = "windows")]
+    let result = launch("rundll32.exe", &["url.dll,FileProtocolHandler", URL]);
+    #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
+    let result: std::io::Result<std::process::Child> = Err(std::io::Error::new(
+        std::io::ErrorKind::Unsupported,
+        "Opening project links is unsupported on this platform",
+    ));
+    result
+        .map(|mut child| {
+            std::thread::spawn(move || {
+                let _ = child.wait();
+            });
+        })
+        .map_err(|error| format!("Could not open project URL: {error}"))
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     if let Some(result) = worker::run_if_requested() {
@@ -209,6 +238,7 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            open_project_url,
             get_config,
             save_config,
             unlock,

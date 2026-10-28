@@ -43,6 +43,8 @@ import {
   SlidersHorizontal,
   Sparkles,
   Terminal,
+  Trash2,
+  Github,
   X,
 } from "lucide";
 const icons = {
@@ -83,6 +85,8 @@ const icons = {
   SlidersHorizontal,
   Sparkles,
   Terminal,
+  Trash2,
+  Github,
   X,
 };
 import {
@@ -113,6 +117,16 @@ import "./profile-page.css";
 import { analyticsView, inspectedStorage } from "./analytics";
 import "./flat.css";
 import "./repository-workspace.css";
+import "./compact.css";
+import licenseText from "../LICENSE?raw";
+import {
+  decorateButtons,
+  iconButtons,
+  setIconButtons,
+  installZoom,
+} from "./interface";
+import { repositoryRhythm } from "./analytics";
+installZoom((message) => notify(message, true));
 
 const app = document.querySelector<HTMLDivElement>("#app")!;
 const modalRoot = document.querySelector<HTMLDivElement>("#modal-root")!;
@@ -199,6 +213,7 @@ function notify(message: string, bad = false) {
   toastTimer = setTimeout(() => (toast.className = ""), 6500);
 }
 function paintIcons() {
+  decorateButtons();
   createIcons({ icons, attrs: { "stroke-width": 1.6 } });
 }
 function empty(title: string, description: string, action = "") {
@@ -230,6 +245,7 @@ function render() {
       "Browse a saved snapshot without extracting files.",
     ],
     settings: ["Settings & help", "Small details. Reliable backups."],
+    about: ["About borgd", "Backup software by Chris Visser."],
   };
   const topIcon = (label: string, glyph: string, attrs: string) =>
     `<button class="top-icon" aria-label="${label}" title="${label}" ${attrs}>${icon(glyph)}</button>`;
@@ -243,7 +259,7 @@ function render() {
     )
     .join(
       "",
-    )}</nav></aside><main><header class="toolbar"><div class="top-brand"><strong>borgd</strong><span class="version">0.1</span><span class="brand-tagline">BACKUP COMPANION</span></div><div class="top-tools"><div class="engine-status" role="status" title="${e(status.busy ? `${version} · Operation in progress` : version)}"><span class="dot ${status.busy ? "amber pulse" : available ? "green" : "amber"}"></span><span>${e(version)}</span>${status.busy ? '<span id="running-label">Working</span>' : ""}</div>${topIcon("Terminal", "terminal", `data-action="toggle-terminal" aria-expanded="${terminalDock.visible}"`)}${topIcon("Settings & help", "settings-2", 'data-route="settings"')}</div></header><div class="content ${route === "activity" || route === "archiveFiles" ? "activity-content" : ""}"><div class="page-heading"><div><div class="eyebrow">YOUR BACKUP WORKSPACE</div><h1>${pages[route][0]}</h1><p>${pages[route][1]}</p></div>${route === "archiveFiles" ? button("Back to archives", "archive-back", "arrow-left") : route === "repositories" ? button("Add repository", "add-repo", "plus", status.busy ? "disabled" : "", true) : ""}</div>${initialized && !available && isFreshInstallation(config, status.history) ? `<div class="notice">${icon("info")}<div><strong>${isTauri() ? "Borg needs a little setup" : "Desktop preview"}</strong><p>${isTauri() ? e(error || "Looking for Borg 1.x on this computer.") : "This is the browser preview. Run the Tauri desktop app to connect repositories and execute real backups."}</p></div>${button("Setup guide", "setup", "arrow-up-right")}</div>` : ""}<div id="view">${view()}</div></div><footer><span>${icon("lock-keyhole")} Passphrases stay in memory, never on disk.</span><span id="footer-status">${status.busy ? (status.workerRunning ? "Backup worker is running. You may close this window." : "Keep borgd open until this operation finishes.") : status.workerRunning ? "Background backup worker connected" : "Powered by Borg Backup"}</span></footer></main></div>`;
+    )}</nav></aside><main><header class="toolbar"><button class="top-brand" data-route="about" aria-label="About borgd" title="About borgd"><strong>borgd</strong><span class="version">0.1</span><span class="brand-tagline">BACKUP COMPANION</span></button><div class="top-tools"><div class="engine-status" role="status" title="${e(status.busy ? `${version} · Operation in progress` : version)}"><span class="dot ${status.busy ? "amber pulse" : available ? "green" : "amber"}"></span><span>${e(version)}</span>${status.busy ? '<span id="running-label">Working</span>' : ""}</div>${topIcon("Terminal", "terminal", `data-action="toggle-terminal" aria-expanded="${terminalDock.visible}"`)}${topIcon("Settings & help", "settings-2", 'data-route="settings"')}</div></header><div class="content ${route === "activity" || route === "archiveFiles" ? "activity-content" : ""}"><div class="page-heading"><div><div class="eyebrow">YOUR BACKUP WORKSPACE</div><h1>${pages[route][0]}</h1><p>${pages[route][1]}</p></div>${route === "archiveFiles" ? button("Back to archives", "archive-back", "arrow-left") : route === "repositories" ? button("Add repository", "add-repo", "plus", status.busy ? "disabled" : "", true) : ""}</div>${initialized && !available && isFreshInstallation(config, status.history) ? `<div class="notice">${icon("info")}<div><strong>${isTauri() ? "Borg needs a little setup" : "Desktop preview"}</strong><p>${isTauri() ? e(error || "Looking for Borg 1.x on this computer.") : "This is the browser preview. Run the Tauri desktop app to connect repositories and execute real backups."}</p></div>${button("Setup guide", "setup", "arrow-up-right")}</div>` : ""}<div id="view">${view()}</div></div><footer><span>${icon("lock-keyhole")} Passphrases stay in memory, never on disk.</span><span id="footer-status">${status.busy ? (status.workerRunning ? "Backup worker is running. You may close this window." : "Keep borgd open until this operation finishes.") : status.workerRunning ? "Background backup worker connected" : "Powered by Borg Backup"}</span></footer></main></div>`;
   if (route === "archiveFiles" && !archiveLoading && !archiveError) {
     const browserRoot = app.querySelector<HTMLElement>("#archive-browser-root");
     if (browserRoot)
@@ -289,6 +305,8 @@ function render() {
   paintIcons();
 }
 function view(): string {
+  if (route === "about")
+    return `<section class="about-page"><h2>borgd <small>0.1.0</small></h2><p>Developed by Chris Visser</p><a href="https://github.com/vcsoc/borgd" data-action="open-project" class="project-link">${icon("github")}https://github.com/vcsoc/borgd</a><h3>License</h3><pre class="license-text">${e(licenseText)}</pre></section>`;
   if (route === "repositories") return repositories();
   if (route === "activity") return activity();
   if (route === "archiveFiles") return archiveFilesView();
@@ -325,7 +343,10 @@ function repositories() {
     .map((r) => {
       const data = info[r.id];
       const last = status.history.find((h) => h.repositoryId === r.id);
-      return `<article class="repo-card" data-repository="${e(r.id)}" aria-label="${e(r.name)}"><div class="repo-title"><div class="profile-icon">${icon(r.location.startsWith("ssh:") ? "cloud" : "hard-drive")}</div><div><h2>${e(r.name)}</h2><code>${e(r.location)}</code></div><span class="pill">${status.unlocked.includes(r.id) ? "Session passphrase set" : "Passphrase not set"}</span></div>${data ? `<div class="repo-details"><div><small>ENCRYPTION</small><strong>${e(data.encryption?.mode || "Unknown")}</strong></div><div><small>STORED</small><strong>${bytes(data.cache?.stats?.unique_csize)}</strong></div><div><small>ORIGINAL SIZE</small><strong>${bytes(data.cache?.stats?.total_size)}</strong></div><div><small>ARCHIVES</small><strong>${e(data.archives?.length ?? "--")}</strong></div></div>` : '<p class="muted">Inspect this repository to load encryption and storage details.</p>'}${last && last.exitCode > 1 ? `<div class="repository-error" role="status"><strong>Last operation failed</strong><p>${e(last.message)}</p>${last.message.includes("Repository passphrase is missing or incorrect") ? button("Set session passphrase", "unlock", "key-round", `data-id="${e(r.id)}" ${disabled()}`) : ""}<button class="text-button" data-route="activity">View activity ${icon("arrow-right")}</button></div>` : ""}<div class="repo-actions">${button("Inspect", "info", "refresh-cw", `data-id="${e(r.id)}" ${disabled()}`)}${(["overview", "profiles", "archives"] as RepositoryPanel[]).map((panel) => `<button class="button panel-toggle" data-action="repo-panel" data-id="${e(r.id)}" data-panel="${panel}" aria-expanded="${repositoryPanels.get(r.id) === panel}" aria-controls="repository-panel-${e(r.id)}">${icon(panel === "overview" ? "layout-dashboard" : panel === "profiles" ? "folders" : "archive")}${panel === "overview" ? "Overview" : panel === "profiles" ? "Profiles" : "Archives"}</button>`).join("")}${status.unlocked.includes(r.id) ? button("Lock", "lock-repository", "lock-keyhole", `data-id="${e(r.id)}" ${disabled()}`) : button("Unlock", "unlock", "key-round", `data-id="${e(r.id)}" ${disabled()}`)}${button("Check", "check", "shield-check", `data-id="${e(r.id)}" ${disabled()}`)}${button("Initialize", "initialize", "plus", `data-id="${e(r.id)}" ${disabled()}`)}<button class="text-button danger push-right" data-action="forget-repo" data-id="${e(r.id)}" ${status.busy ? "disabled" : ""}>Forget</button></div><div data-unlock-host="${e(r.id)}"></div>${repositoryPanels.has(r.id) ? `<section class="repository-panel" id="repository-panel-${e(r.id)}" aria-label="${e(r.name)} ${repositoryPanels.get(r.id)}">${repositoryPanels.get(r.id) === "overview" ? repositoryOverview(r.id) : repositoryPanels.get(r.id) === "profiles" ? repositoryProfiles(r.id) : archiveView(r.id)}</section>` : ""}</article>`;
+      return `<article class="repo-card" data-repository="${e(r.id)}" aria-label="${e(r.name)}"><div class="repo-title"><div class="profile-icon">${icon(r.location.startsWith("ssh:") ? "cloud" : "hard-drive")}</div><div><h2>${e(r.name)}</h2><code>${e(r.location)}</code></div>${repositoryRhythm(
+        status.history.filter((entry) => entry.repositoryId === r.id),
+        inspectedStorage([r], info)[0]?.size,
+      )}<span class="pill">${status.unlocked.includes(r.id) ? "Session passphrase set" : "Passphrase not set"}</span></div>${data ? `<div class="repo-details"><div><small>ENCRYPTION</small><strong>${e(data.encryption?.mode || "Unknown")}</strong></div><div><small>STORED</small><strong>${bytes(data.cache?.stats?.unique_csize)}</strong></div><div><small>ORIGINAL SIZE</small><strong>${bytes(data.cache?.stats?.total_size)}</strong></div><div><small>ARCHIVES</small><strong>${e(data.archives?.length ?? "--")}</strong></div></div>` : ""}${last && last.exitCode > 1 ? `<div class="repository-error" role="status"><strong>Last operation failed</strong><p>${e(last.message)}</p>${last.message.includes("Repository passphrase is missing or incorrect") ? button("Set session passphrase", "unlock", "key-round", `data-id="${e(r.id)}" ${disabled()}`) : ""}<button class="text-button" data-route="activity">View activity ${icon("arrow-right")}</button></div>` : ""}<div class="repo-actions">${button("Inspect", "info", "refresh-cw", `data-id="${e(r.id)}" title="Inspect this repository to load encryption and storage details." ${disabled()}`)}${(["overview", "profiles", "archives"] as RepositoryPanel[]).map((panel) => `<button class="button panel-toggle" data-action="repo-panel" data-id="${e(r.id)}" data-panel="${panel}" aria-expanded="${repositoryPanels.get(r.id) === panel}" aria-label="${panel === "overview" ? "Overview" : panel === "profiles" ? "Profiles" : "Archives"}" title="${panel === "overview" ? "Overview" : panel === "profiles" ? "Profiles" : "Archives"}" aria-controls="repository-panel-${e(r.id)}">${icon(panel === "overview" ? "layout-dashboard" : panel === "profiles" ? "folders" : "archive")}${panel === "overview" ? "Overview" : panel === "profiles" ? "Profiles" : "Archives"}</button>`).join("")}${status.unlocked.includes(r.id) ? button("Lock", "lock-repository", "lock-keyhole", `data-id="${e(r.id)}" ${disabled()}`) : button("Unlock", "unlock", "key-round", `data-id="${e(r.id)}" ${disabled()}`)}${button("Check", "check", "shield-check", `data-id="${e(r.id)}" ${disabled()}`)}${button("Initialize", "initialize", "plus", `data-id="${e(r.id)}" ${disabled()}`)}<button class="text-button danger push-right" data-action="forget-repo" data-id="${e(r.id)}" ${status.busy ? "disabled" : ""} aria-label="Forget repository" title="Forget repository (leave all archives on disk)">${icon("trash-2")}<span class="button-label">Forget</span></button></div><div data-unlock-host="${e(r.id)}"></div>${repositoryPanels.has(r.id) ? `<section class="repository-panel" id="repository-panel-${e(r.id)}" aria-label="${e(r.name)} ${repositoryPanels.get(r.id)}">${repositoryPanels.get(r.id) === "overview" ? repositoryOverview(r.id) : repositoryPanels.get(r.id) === "profiles" ? repositoryProfiles(r.id) : archiveView(r.id)}</section>` : ""}</article>`;
     })
     .join("");
 }
@@ -356,7 +377,7 @@ function activity() {
   return `<section class="activity-workspace" aria-label="Operation activity"><div id="check-progress" aria-live="polite">${checkProgressMarkup()}</div><div class="activity-section-heading"><h2>Operation log</h2><span class="pill ${status.busy ? "success" : ""}" id="activity-state">${status.busy ? "Running" : "Idle"}</span></div><div class="activity-log-panel"><button class="copy-button copy-log" data-action="copy-log" aria-label="Copy operation log" title="Copy operation log" ${status.logs.length ? "" : "disabled"}>${icon("copy")}</button><pre class="terminal" id="terminal" tabindex="0" aria-label="Borg operation output">${e(status.logs.join("\n") || "No operations in this session.\nYour Borg output will appear here as it happens.")}</pre></div><div class="activity-section-heading"><h2>Recent activity</h2><span class="muted">Last 200 operations</span></div>${status.history.length ? `<div class="table-wrap activity-history" tabindex="0" role="region" aria-label="Recent activity history"><table><thead><tr><th>Operation</th><th>Repository</th><th>Time</th><th>Result</th><th class="copy-column"><span class="sr-only">Copy details</span></th></tr></thead><tbody>${status.history.map((h) => `<tr><td class="capitalize">${e(h.action)}</td><td>${e(h.repositoryName ?? repo(h.repositoryId)?.name ?? "Forgotten repository")}</td><td>${e(date(h.time))}</td><td><span title="${e(h.message)}" class="pill ${h.exitCode === 0 ? "success" : h.exitCode === 1 ? "warning" : "failure"}">${h.exitCode === 0 ? "Completed" : h.exitCode === 1 ? "Warning" : "Failed"}</span></td><td class="copy-column"><button class="copy-button" data-action="copy-history" data-id="${e(h.id ?? "")}" data-time="${e(h.time)}" data-operation="${e(h.action)}" data-repository="${e(h.repositoryId)}" aria-label="Copy details for ${e(h.action)} at ${e(date(h.time))}" title="Copy full operation details">${icon("copy")}</button></td></tr>`).join("")}</tbody></table></div>` : `<div class="activity-empty">${empty("A clean slate", "Backup results, checks, and restores will be recorded here.")}</div>`}</section>`;
 }
 function settings() {
-  return `${appearanceView()}${status.workerRunning ? `<section class="settings-card"><h2>${icon("clock-3")} Background backups <span class="pill success">Worker connected</span></h2><p>Set an interval on a backup profile to opt in; 0 means manual only. Scheduled backups continue with this window closed. Activity and configuration are shared with the worker. Encrypted repositories need unlocking again after a worker restart or reboot.</p><p>Linux user service: <code>borgd-worker.service</code>. A systemd installation autostarts at login; user lingering enables boot and logout operation. Without systemd, the worker stays alive after closing this window but needs external supervision for autostart.</p><code class="code-block">systemctl --user status borgd-worker.service<br>journalctl --user -u borgd-worker.service</code></section>` : ""}<section class="settings-card"><h2>${icon("terminal")} Borg engine</h2><p>borgd uses <strong>Borg Backup 1.x</strong> installed on your computer. Borg 2 repositories are not supported. Borg is not bundled inside the AppImage.</p><div class="engine-detail"><code>${e(version)}</code>${button("Check again", "probe", "refresh-cw")}${!available && isTauri() ? button("Install Borg Backup", "install-borg", "download") : ""}</div>${error ? `<p class="form-error" role="alert">${e(error)}</p>` : ""}<h3>Linux</h3><p>Install Borg using your distribution's package manager, then launch the borgd AppImage.</p><code class="code-block">sudo apt install borgbackup &nbsp; # Debian / Ubuntu<br>sudo pacman -S borg &nbsp; &nbsp; &nbsp; # Arch Linux</code><h3>macOS</h3><code class="code-block">brew install borgbackup</code><p>borgd also checks the standard Apple Silicon and Intel Homebrew locations when launched from Finder.</p><h3>Windows</h3><p>Install WSL and Borg inside your default Linux distribution. borgd invokes <code>wsl.exe --exec borg</code>. Use Linux paths such as <code>/mnt/c/Users/you/Documents</code> for sources and destinations. SSH keys and known hosts belong inside WSL.</p><code class="code-block">wsl --install<br>wsl -- sudo apt install borgbackup</code></section><section class="settings-card"><h2>${icon("shield-check")} Security, without surprises</h2><p>Repository passphrases are kept only for this session and passed to Borg through its environment, never command-line arguments or saved settings. ${status.workerRunning ? "Passphrases remain only in background-worker memory when this window closes. Use Lock to clear them; a worker restart or reboot forgets them." : "Unlock each encrypted repository again after restarting."}</p><p>Before using an SSH repository, connect once in your terminal to verify the server's host key and configure key-based authentication. borgd does not answer interactive SSH prompts.</p><p>Back up your repository key separately using <code>borg key export REPOSITORY keyfile</code>. Losing the key or passphrase can make encrypted backups unrecoverable.</p><p>Retention only affects archives created by the selected profile. Preview pruning first. No automatic prune, compact, archive deletion, or destructive repair is performed.</p></section><section class="settings-card"><h2>${icon("info")} About borgd</h2><p>Version 0.1.0 · Rust + Tauri · Inspired by Pigeon's quiet, compact workspace.</p><p>${status.workerRunning ? "The Linux background worker owns all Borg operations and schedules. This window can close during backups. The user service starts at login; with user lingering enabled it also runs after logout and starts at boot. Powered-off or suspended computers cannot run backups; overdue schedules run once on resume." : "Scheduling requires the app to stay open on this platform. Window closing is blocked during active operations."} Borg operations are serialized; no parallel backups or force-unlocking.</p></section>`;
+  return `${appearanceView()}<section class="settings-card"><h2>Button labels</h2><label class="button-mode-control"><span>Icon-only action buttons</span><input id="icon-buttons" role="switch" type="checkbox" ${iconButtons() ? "checked" : ""}><span class="toggle-track" aria-hidden="true"></span></label><p>Enabled by default. Turn off to show icons with text. Actions retain accessible labels and tooltips in either mode.</p><p>Zoom the application with Ctrl+ / Ctrl- (Cmd on macOS); Ctrl+0 resets to 100%.</p></section>${status.workerRunning ? `<section class="settings-card"><h2>${icon("clock-3")} Background backups <span class="pill success">Worker connected</span></h2><p>Set an interval on a backup profile to opt in; 0 means manual only. Scheduled backups continue with this window closed. Activity and configuration are shared with the worker. Encrypted repositories need unlocking again after a worker restart or reboot.</p><p>Linux user service: <code>borgd-worker.service</code>. A systemd installation autostarts at login; user lingering enables boot and logout operation. Without systemd, the worker stays alive after closing this window but needs external supervision for autostart.</p><code class="code-block">systemctl --user status borgd-worker.service<br>journalctl --user -u borgd-worker.service</code></section>` : ""}<section class="settings-card"><h2>${icon("terminal")} Borg engine</h2><p>borgd uses <strong>Borg Backup 1.x</strong> installed on your computer. Borg 2 repositories are not supported. Borg is not bundled inside the AppImage.</p><div class="engine-detail"><code>${e(version)}</code>${button("Check again", "probe", "refresh-cw")}${!available && isTauri() ? button("Install Borg Backup", "install-borg", "download") : ""}</div>${error ? `<p class="form-error" role="alert">${e(error)}</p>` : ""}<h3>Linux</h3><p>Install Borg using your distribution's package manager, then launch the borgd AppImage.</p><code class="code-block">sudo apt install borgbackup &nbsp; # Debian / Ubuntu<br>sudo pacman -S borg &nbsp; &nbsp; &nbsp; # Arch Linux</code><h3>macOS</h3><code class="code-block">brew install borgbackup</code><p>borgd also checks the standard Apple Silicon and Intel Homebrew locations when launched from Finder.</p><h3>Windows</h3><p>Install WSL and Borg inside your default Linux distribution. borgd invokes <code>wsl.exe --exec borg</code>. Use Linux paths such as <code>/mnt/c/Users/you/Documents</code> for sources and destinations. SSH keys and known hosts belong inside WSL.</p><code class="code-block">wsl --install<br>wsl -- sudo apt install borgbackup</code></section><section class="settings-card"><h2>${icon("shield-check")} Security, without surprises</h2><p>Repository passphrases are kept only for this session and passed to Borg through its environment, never command-line arguments or saved settings. ${status.workerRunning ? "Passphrases remain only in background-worker memory when this window closes. Use Lock to clear them; a worker restart or reboot forgets them." : "Unlock each encrypted repository again after restarting."}</p><p>Before using an SSH repository, connect once in your terminal to verify the server's host key and configure key-based authentication. borgd does not answer interactive SSH prompts.</p><p>Back up your repository key separately using <code>borg key export REPOSITORY keyfile</code>. Losing the key or passphrase can make encrypted backups unrecoverable.</p><p>Retention only affects archives created by the selected profile. Preview pruning first. No automatic prune, compact, archive deletion, or destructive repair is performed.</p></section><section class="settings-card"><h2>${icon("info")} About borgd</h2><p>Version 0.1.0 · Rust + Tauri · Inspired by Pigeon's quiet, compact workspace.</p><p>${status.workerRunning ? "The Linux background worker owns all Borg operations and schedules. This window can close during backups. The user service starts at login; with user lingering enabled it also runs after logout and starts at boot. Powered-off or suspended computers cannot run backups; overdue schedules run once on resume." : "Scheduling requires the app to stay open on this platform. Window closing is blocked during active operations."} Borg operations are serialized; no parallel backups or force-unlocking.</p></section>`;
 }
 
 function modal(
@@ -425,7 +446,7 @@ function addRepo() {
   modal(
     "Add a repository",
     "A secure destination for your backups.",
-    `${field("Name", "name", "", "External drive, Home server...")}<label class="field">Repository type<select name="mode"><option value="existing">Connect existing repository</option><option value="new">Create encrypted repository</option><option value="plain">Create unencrypted repository</option></select></label><label class="field">Repository location<div class="input-action"><input required name="location" placeholder="/media/backup/borg or ssh://user@host/./repo"><button type="button" class="button" id="pick-repo">${icon("folder-open")}</button></div></label>${field("Passphrase (session only)", "passphrase", "", "Leave empty for unencrypted repositories", "password", false)}<p class="field-help">New encrypted repositories use repokey-blake2. Use a strong, unique passphrase. On Windows enter WSL paths manually.</p>`,
+    `${field("Name", "name", "", "External drive, Home server...")}<label class="field">Repository type<select name="mode"><option value="existing">Connect existing repository</option><option value="new">Create encrypted repository</option><option value="plain">Create unencrypted repository</option></select></label><label class="field">Repository location<div class="input-action"><input required name="location" placeholder="/media/backup/borg or ssh://user@host/./repo"><button type="button" class="button" id="pick-repo" aria-label="Choose repository folder" title="Choose repository folder">${icon("folder-open")}</button></div></label>${field("Passphrase (session only)", "passphrase", "", "Leave empty for unencrypted repositories", "password", false)}<p class="field-help">New encrypted repositories use repokey-blake2. Use a strong, unique passphrase. On Windows enter WSL paths manually.</p>`,
     "Connect repository",
     async (form) => {
       const mode = value(form, "mode");
@@ -916,6 +937,15 @@ async function handleAction(action: string, element: HTMLElement) {
   )
     throw new Error("Wait for the current profile save to finish.");
   switch (action) {
+    case "open-project":
+      if (isTauri()) await invoke("open_project_url");
+      else
+        window.open(
+          "https://github.com/vcsoc/borgd",
+          "_blank",
+          "noopener,noreferrer",
+        );
+      break;
     case "copy-log":
       if (status.logs.length)
         await copyToClipboard(
@@ -1096,7 +1126,7 @@ async function handleAction(action: string, element: HTMLElement) {
       await offerBorgInstall();
       break;
     case "appearance-reset":
-      saveAppearance("mono", 15);
+      saveAppearance("mono", 14);
       render();
       break;
     case "prune-preview":
@@ -1168,6 +1198,7 @@ document.addEventListener("click", (event) => {
     "[data-action], [data-route], [data-repo]",
   );
   if (!element || element.hasAttribute("disabled")) return;
+  if (element.dataset.action === "open-project") event.preventDefault();
   if (element.dataset.route) {
     route = element.dataset.route;
     render();
@@ -1183,6 +1214,8 @@ document.addEventListener("click", (event) => {
 });
 document.addEventListener("change", (event) => {
   const target = event.target as HTMLSelectElement;
+  if (target.id === "icon-buttons")
+    setIconButtons((event.target as HTMLInputElement).checked);
   if (target.id === "appearance-family" || target.id === "appearance-size") {
     saveAppearance(
       document.querySelector<HTMLSelectElement>("#appearance-family")!.value,

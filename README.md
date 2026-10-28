@@ -166,7 +166,7 @@ Each repository's Overview section includes a 30-day recorded-backup graph, an 8
 
 ## Appearance
 
-The default interface font is **JetBrains Mono, 15px**, with DejaVu Sans Mono as a local fallback. **Settings & help → Appearance** offers font family choices and a 12–20px text-size control, applied immediately and saved locally. Existing explicit preferences are preserved; Reset appearance restores JetBrains Mono/15px. No fonts are downloaded. The left navigation is a fixed narrow icon rail containing the logo/home button and only Repositories and Activity. Old saved sidebar width/collapse preferences are no longer applied. App branding/version live in the top bar; Borg availability/version replaces the idle slogan at the top right, next to icon-only Terminal and Settings & help buttons with accessible labels and native tooltips. Typography preferences remain supported without widening the rail.
+The default interface font is **JetBrains Mono, 14px**, with DejaVu Sans Mono as a local fallback. **Settings & help → Appearance** offers font family choices and a 12–20px text-size control, applied immediately and saved locally. Existing explicit preferences are preserved; Reset appearance restores JetBrains Mono/14px. No fonts are downloaded. The left navigation is a fixed narrow icon rail containing the logo/home button and only Repositories and Activity. Old saved sidebar width/collapse preferences are no longer applied. App branding/version live in the top bar; Borg availability/version replaces the idle slogan at the top right, next to icon-only Terminal and Settings & help buttons with accessible labels and native tooltips. Typography preferences remain supported without widening the rail.
 
 ## Integrity-check progress and passphrases
 
@@ -225,4 +225,10 @@ Keep the key and passphrase safe, and periodically test restoration. Forgetting 
 - `src-tauri/src/engine.rs`: validated configuration, session secrets, bounded logs, command construction, and Borg integration tests.
 - `src-tauri/src/lib.rs`: Tauri commands, native window lifecycle, and single-instance handling.
 
-MIT licensed. Not affiliated with the Borg or Vorta projects.
+Licensed under the custom [borgd License](LICENSE): free use of the unmodified application; modifications and sale/resale require prior written developer approval. Earlier MIT-licensed revisions retain their original permissions. Third-party dependencies retain their own licenses. Not affiliated with the Borg or Vorta projects.
+
+## Compact Controls, Zoom, And About
+
+Action buttons default to icon-only with accessible labels and tooltips. Settings offers an **Icon-only action buttons** switch; turning it off restores icons with text. The preference persists locally and does not hide file/folder names or sortable column labels. Inspect guidance lives on its tooltip instead of a placeholder row. Each repository displays its own 30-day backup rhythm, recorded run/failure totals, and inspected stored bytes without opening Overview; unavailable storage is never estimated.
+
+Ctrl+ / Ctrl- zooms the entire application from 50% to 200%, with Ctrl+0 resetting to 100%; Cmd shortcuts also work on macOS. Zoom is independent of saved font preferences and resets on launch. Clicking the top-bar branding opens an inline About page with version, developer attribution, the GitHub project link, and the complete license. The native project link opens only the fixed project URL in the default browser.

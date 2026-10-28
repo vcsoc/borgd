@@ -104,10 +104,20 @@ it("recovers from broken local preferences and ignores unknown presets", () => {
 });
 
 it("copies both template palettes and layout into Custom without mutating the preset", () => {
-  selectTheme("custom"); setCustomColor("header", "#123456"); setCustomLayout(12, "comfortable"); setThemeMode("light");
-  const dark = palette("forest", "dark"), light = palette("forest", "light");
+  selectTheme("custom");
+  setCustomColor("header", "#123456");
+  setCustomLayout(12, "comfortable");
+  setThemeMode("light");
+  const dark = palette("forest", "dark"),
+    light = palette("forest", "light");
   updateCustomFromTheme("forest");
-  expect(themeState()).toMatchObject({ theme: "custom", mode: "light", radius: 4, density: "compact", custom: { dark, light } });
+  expect(themeState()).toMatchObject({
+    theme: "custom",
+    mode: "light",
+    radius: 4,
+    density: "compact",
+    custom: { dark, light },
+  });
   setCustomColor("header", "#654321");
   expect(palette("forest", "light")).toEqual(light);
   expect(palette("custom", "dark")).toEqual(dark);

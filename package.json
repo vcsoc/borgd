@@ -1,0 +1,35 @@
+{
+  "name": "borgd",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --host 127.0.0.1",
+    "tauri": "tauri",
+    "test": "vitest run",
+    "test:ui": "playwright test",
+    "test:rust": "cargo test --manifest-path src-tauri/Cargo.toml --lib",
+    "build:linux": "tauri build --bundles appimage",
+    "build:macos": "tauri build --bundles app,dmg",
+    "build:windows": "tauri build --bundles nsis",
+    "format": "prettier --write src tests *.ts *.json README.md src-tauri/*.json src-tauri/capabilities/*.json .github/workflows/*.yml"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.10.0",
+    "@tauri-apps/plugin-clipboard-manager": "^2.5.0",
+    "@tauri-apps/plugin-dialog": "^2.7.0",
+    "@xterm/addon-fit": "^0.11.0",
+    "@xterm/xterm": "^6.0.0",
+    "lucide": "^0.468.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.1",
+    "@tauri-apps/cli": "^2.10.0",
+    "prettier": "^3.9.10",
+    "typescript": "~5.9.3",
+    "vite": "^7.3.1",
+    "vitest": "^5.0.5"
+  }
+}

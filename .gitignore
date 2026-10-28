@@ -1,0 +1,15 @@
+node_modules/
+dist/
+src-tauri/target/
+src-tauri/gen/
+test-results/
+playwright-report/
+.DS_Store
+*.log
+.env
+.env.*
+!.env.example
+__pycache__/
+*.pyc
+.pi/
+vault/20-projects/agent-mesh-context/

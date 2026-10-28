@@ -1,0 +1,121 @@
+.archive-full-content {
+  padding: 0 !important;
+  max-width: none;
+  width: 100%;
+}
+.archive-full-content > #view {
+  padding: 0;
+  gap: 0;
+}
+.archive-full-content .archive-explorer {
+  border: 0;
+  border-radius: 0;
+}
+main:has(.archive-full-content) > footer {
+  display: none;
+}
+.archive-topbar {
+  min-height: 64px;
+  height: auto;
+  padding: 10px 16px;
+  gap: 14px;
+}
+.archive-topbar .archive-topbar-title {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.archive-topbar h1 {
+  color: var(--text);
+  font-size: 1.08rem;
+  font-weight: 600;
+}
+.archive-topbar-title > span {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.archive-content-pane td:first-child > input {
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 10px;
+  accent-color: var(--accent);
+}
+.archive-content-pane td:first-child > button {
+  display: inline-flex;
+  vertical-align: middle;
+}
+.archive-context-menu {
+  position: fixed;
+  z-index: 100;
+  padding: 5px;
+  border: 1px solid #58647a;
+  border-radius: 6px;
+  background: #252b35;
+  box-shadow: 0 12px 40px #0008;
+  max-width: calc(100vw - 16px);
+}
+.archive-context-menu button {
+  display: block;
+  padding: 11px 14px;
+  background: transparent;
+  border: 0;
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+}
+.archive-context-menu button:hover,
+.archive-context-menu button:focus {
+  background: var(--selection);
+  border-radius: 3px;
+}
+.install-commands {
+  padding: 12px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  max-height: 160px;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  margin-bottom: 16px;
+}
+#install-progress p {
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin: 12px 0;
+}
+#install-progress progress {
+  width: 100%;
+}
+.modal:has(#install-commands) .form-error {
+  max-height: 180px;
+  overflow: auto;
+  white-space: pre-wrap;
+}
+.restore-paths {
+  max-height: 180px;
+  overflow: auto;
+  padding: 12px 20px;
+  margin-bottom: 16px;
+  border: 1px solid var(--line);
+  overflow-wrap: anywhere;
+}
+@media (max-width: 800px) {
+  .archive-topbar {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .archive-topbar-title {
+    order: -1;
+    flex-basis: 100% !important;
+  }
+  .archive-topbar .button {
+    font-size: 0.77rem;
+  }
+}

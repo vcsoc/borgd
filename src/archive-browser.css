@@ -1,0 +1,222 @@
+#view:has(.archive-context) {
+  flex-direction: column;
+  gap: 14px;
+}
+.archive-context {
+  display: flex;
+  flex-shrink: 0;
+  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
+}
+.archive-context > div {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 5px;
+}
+.archive-context strong {
+  overflow-wrap: anywhere;
+}
+.archive-context span {
+  color: var(--muted);
+  font-size: 0.8462rem;
+}
+#archive-browser-root {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+  min-width: 0;
+}
+.archive-explorer {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  flex: 1;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  overflow: hidden;
+  background: linear-gradient(120deg, #202329, #1b1d21);
+}
+.archive-explorer-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px;
+  border-bottom: 1px solid var(--line);
+  flex-shrink: 0;
+}
+.archive-breadcrumbs {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.archive-breadcrumbs button {
+  color: var(--muted);
+  background: transparent;
+  border: 0;
+  padding: 4px;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+.archive-breadcrumbs button[aria-current] {
+  color: var(--text);
+}
+.archive-explorer-toolbar .search {
+  flex: 0 1 280px;
+  margin: 0;
+}
+.archive-explorer-panes {
+  display: grid;
+  grid-template-columns: minmax(170px, 25%) minmax(0, 1fr);
+  flex: 1;
+  min-height: 0;
+}
+.archive-folder-pane {
+  overflow: auto;
+  padding: 12px 0;
+  border-right: 1px solid var(--line);
+  background: #181b20;
+}
+.archive-folder-pane h2 {
+  font-size: 0.7692rem;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--muted);
+  padding: 0 14px 12px;
+}
+.archive-tree-row {
+  display: flex;
+  align-items: center;
+  padding-left: calc(var(--depth) * 14px + 6px);
+  min-width: max-content;
+}
+.archive-tree-row.selected {
+  background: var(--selection);
+}
+.archive-tree-row button {
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+.archive-tree-row button[data-folder] {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 12px 8px 0;
+  font-size: 0.8462rem;
+  text-align: left;
+}
+.archive-tree-row svg {
+  width: 15px;
+  height: 15px;
+  color: #9eb7e2;
+  flex-shrink: 0;
+}
+.tree-toggle,
+.tree-spacer {
+  width: 20px;
+  flex-shrink: 0;
+}
+.archive-content-pane {
+  overflow: auto;
+  min-width: 0;
+  background: #191b1f;
+}
+.archive-content-pane table {
+  width: 100%;
+}
+.archive-content-pane th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #25282e;
+}
+.archive-content-pane td {
+  white-space: nowrap;
+}
+.archive-content-pane td:first-child {
+  width: 55%;
+}
+.archive-content-pane td button {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  border: 0;
+  background: none;
+  color: var(--text);
+  padding: 4px 0;
+  text-align: left;
+  cursor: pointer;
+}
+.archive-content-pane td button svg {
+  width: 16px;
+  height: 16px;
+  color: #9eb7e2;
+  flex-shrink: 0;
+}
+.archive-content-pane td small {
+  display: block;
+  color: var(--muted);
+  margin-top: 4px;
+}
+.archive-content-pane tr.selected {
+  background: var(--selection);
+}
+.archive-no-items {
+  padding: 24px;
+  color: var(--muted);
+}
+.archive-more {
+  margin: 14px;
+}
+.archive-explorer-status {
+  position: static;
+  flex-shrink: 0;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 0.7692rem;
+}
+.archive-explorer-status span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+@media (max-width: 800px) {
+  .archive-explorer-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .archive-explorer-toolbar .search {
+    flex: auto;
+  }
+  .archive-explorer-panes {
+    grid-template-columns: 150px minmax(0, 1fr);
+  }
+  .archive-context {
+    align-items: flex-start;
+  }
+  .archive-context .button {
+    max-width: 160px;
+    white-space: normal;
+  }
+}
+@media (max-width: 480px) {
+  .archive-explorer-panes {
+    grid-template-columns: 115px minmax(0, 1fr);
+  }
+  .archive-explorer-status {
+    flex-direction: column;
+    gap: 5px;
+  }
+}

@@ -12,4 +12,4 @@ playwright-report/
 __pycache__/
 *.pyc
 .pi/
-vault/20-projects/agent-mesh-context/
+vault/

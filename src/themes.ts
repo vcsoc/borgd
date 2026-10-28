@@ -582,39 +582,39 @@ export function themeStudioView() {
       const p = palette(id, state.mode, state);
       return `<button class="theme-preview" role="radio" tabindex="${state.theme === id ? 0 : -1}" aria-checked="${state.theme === id}" aria-label="${themeNames[id]}" data-action="theme-select" data-theme="${id}" title="Apply ${themeNames[id]} ${state.mode} theme" style="--preview-bg:${p.bg};--preview-panel:${p.panel};--preview-header:${p.header};--preview-accent:${p.accent};--preview-text:${p.text}"><span class="theme-preview-scene" aria-hidden="true"><span class="theme-preview-rail"></span><span class="theme-preview-content"><span class="theme-preview-bar"></span><span class="theme-preview-line"></span><span class="theme-preview-block"></span></span></span><span class="theme-preview-name">${themeNames[id]}${state.theme === id ? '<span aria-hidden="true">✓</span>' : ""}</span></button>`;
     })
-    .join("")}</div>${
-    `<div class="custom-theme-editor"><h3>Custom · ${state.mode} palette</h3><p>Colors are independent for dark and light layouts. Editing colors or layout selects Custom. Fonts are shared with Appearance. Only validated local colors and supported fonts are imported; no CSS, scripts or URLs.</p><div class="theme-typography"><label class="field">Custom font family<select id="custom-theme-family">${[
-          ["mono", "JetBrains Mono"],
-          ["sans", "Noto Sans"],
-          ["serif", "Noto Serif"],
-          ["system", "System sans-serif"],
-        ]
-          .map(
-            ([id, label]) =>
-              `<option value="${id}" ${font.family === id ? "selected" : ""}>${label}</option>`,
-          )
-          .join(
-            "",
-          )}</select></label><label class="field">Custom font size<select id="custom-theme-size">${Array.from(
-          { length: 9 },
-          (_, i) => i + 12,
-        )
-          .map(
-            (size) =>
-              `<option value="${size}" ${font.size === size ? "selected" : ""}>${size}px</option>`,
-          )
-          .join(
-            "",
-          )}</select></label><label class="field">Corner radius<select id="custom-theme-radius">${Array.from(
-          { length: 17 },
-          (_, i) => i,
-        )
-          .map(
-            (size) =>
-              `<option value="${size}" ${state.radius === size ? "selected" : ""}>${size}px</option>`,
-          )
-          .join(
-            "",
-          )}</select></label><label class="field">Spacing<select id="custom-theme-density"><option value="compact" ${state.density === "compact" ? "selected" : ""}>Compact</option><option value="comfortable" ${state.density === "comfortable" ? "selected" : ""}>Comfortable</option></select></label></div><div class="theme-colors">${(Object.keys(colorTokens) as (keyof Colors)[]).map((token) => `<label class="theme-color"><span>${colorTokens[token]}</span><input type="color" data-theme-color="${token}" value="${e(state.custom[state.mode][token])}" aria-label="${colorTokens[token]}"><code>${e(state.custom[state.mode][token])}</code></label>`).join("")}</div></div>`
-  }</div><p class="theme-file-status" role="status" aria-live="polite"></p></section>`;
+    .join(
+      "",
+    )}</div>${`<div class="custom-theme-editor"><h3>Custom · ${state.mode} palette</h3><p>Colors are independent for dark and light layouts. Editing colors or layout selects Custom. Fonts are shared with Appearance. Only validated local colors and supported fonts are imported; no CSS, scripts or URLs.</p><div class="theme-typography"><label class="field">Custom font family<select id="custom-theme-family">${[
+    ["mono", "JetBrains Mono"],
+    ["sans", "Noto Sans"],
+    ["serif", "Noto Serif"],
+    ["system", "System sans-serif"],
+  ]
+    .map(
+      ([id, label]) =>
+        `<option value="${id}" ${font.family === id ? "selected" : ""}>${label}</option>`,
+    )
+    .join(
+      "",
+    )}</select></label><label class="field">Custom font size<select id="custom-theme-size">${Array.from(
+    { length: 9 },
+    (_, i) => i + 12,
+  )
+    .map(
+      (size) =>
+        `<option value="${size}" ${font.size === size ? "selected" : ""}>${size}px</option>`,
+    )
+    .join(
+      "",
+    )}</select></label><label class="field">Corner radius<select id="custom-theme-radius">${Array.from(
+    { length: 17 },
+    (_, i) => i,
+  )
+    .map(
+      (size) =>
+        `<option value="${size}" ${state.radius === size ? "selected" : ""}>${size}px</option>`,
+    )
+    .join(
+      "",
+    )}</select></label><label class="field">Spacing<select id="custom-theme-density"><option value="compact" ${state.density === "compact" ? "selected" : ""}>Compact</option><option value="comfortable" ${state.density === "comfortable" ? "selected" : ""}>Comfortable</option></select></label></div><div class="theme-colors">${(Object.keys(colorTokens) as (keyof Colors)[]).map((token) => `<label class="theme-color"><span>${colorTokens[token]}</span><input type="color" data-theme-color="${token}" value="${e(state.custom[state.mode][token])}" aria-label="${colorTokens[token]}"><code>${e(state.custom[state.mode][token])}</code></label>`).join("")}</div></div>`}</div><p class="theme-file-status" role="status" aria-live="polite"></p></section>`;
 }

@@ -333,7 +333,7 @@ mod tests {
             let program = if already_present {
                 "/nonexistent-must-never-execute"
             } else {
-                "/bin/true"
+                "/bin/sh"
             };
             *installer.pending.lock().unwrap() = Some(Pending {
                 plan: Plan {
@@ -344,7 +344,7 @@ mod tests {
                     message: String::new(),
                     commands: vec![],
                 },
-                steps: vec![step(program, &[])],
+                steps: vec![step(program, &["-c", "exit 0"])],
                 issued: Instant::now(),
             });
             let probes = std::sync::atomic::AtomicUsize::new(0);

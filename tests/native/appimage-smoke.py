@@ -212,6 +212,7 @@ def main():
                 assert invoke("get_status")["history"][0]["exitCode"] == 0
                 assert test_passphrase not in json.dumps(invoke("get_config"))
                 assert test_passphrase not in js("return JSON.stringify({...localStorage,...sessionStorage})")
+                assert js("const row=document.querySelector('.repo-card[data-repository=\"inline-encrypted\"]'); const first=row.querySelector('.repo-actions > button'); return first.dataset.lockState==='unlocked' && !!first.querySelector('svg.lucide-lock-open') && !!row.querySelector('.repository-lock-state.is-unlocked svg.lucide-lock-open')")
                 print("PASS: native inline password field unlocks a real encrypted Borg repository; Inspect verifies access without a modal or persisted passphrase")
                 js("document.querySelector('[data-action=\"info\"][data-id=\"relocation-native\"]').click()")
                 until(lambda: js("return [...document.querySelectorAll('.repo-card')].some(row => row.textContent.includes('Relocation test') && row.querySelector('.repo-details'))"))
@@ -222,12 +223,12 @@ def main():
                 until(lambda: js("return getComputedStyle(document.querySelector('.repository-panel')).opacity === '1'"))
                 Path("test-results/native-flat-overview.png").write_bytes(base64.b64decode(request("GET", root + "/screenshot")))
                 print("PASS: native flat overview charts use real backup history and inspected storage, with an 84-day heatmap and no repository cards")
-                js("document.querySelector('[data-route=\"repositories\"]').click(); document.querySelector('[data-panel=\"archives\"][data-id=\"relocation-native\"]').click(); document.querySelector('[data-action=\"load-archives\"]').click()")
+                js("document.querySelector('[data-route=\"repositories\"]').click(); document.querySelector('[data-panel=\"archives\"][data-id=\"relocation-native\"]').click()")
                 until(lambda: js("return !!document.querySelector('[data-action=\"files\"]:not(:disabled)')"))
                 assert js("return document.querySelector('th[aria-sort=descending] button').dataset.column === 'time'")
                 assert js("return document.querySelector('tbody tr').children[2].textContent.trim() === '2'")
                 Path("test-results/native-archive-statistics.png").write_bytes(base64.b64decode(request("GET", root + "/screenshot")))
-                print("PASS: native archive table defaults to date descending and displays real Borg file counts and original sizes")
+                print("PASS: native archive panel automatically loads on opening, defaults to date descending, and displays real Borg counts and sizes")
                 js("document.querySelector('[data-action=\"files\"]').click()")
                 until(lambda: js("return !!document.querySelector('[aria-label=\"Archive folder tree\"]') && !document.querySelector('dialog[open]')"))
                 parts = [part for part in stored_path.split("/") if part and part != "."]

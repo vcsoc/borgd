@@ -33,6 +33,7 @@ import {
   Link,
   ListFilter,
   LockKeyhole,
+  LockOpen,
   Play,
   Plus,
   RefreshCw,
@@ -75,6 +76,7 @@ const icons = {
   Link,
   ListFilter,
   LockKeyhole,
+  LockOpen,
   Play,
   Plus,
   RefreshCw,
@@ -177,6 +179,40 @@ let installPromptShown = false;
 let installPlanning = false;
 let error = "";
 let archives: Record<string, Archive[]> = {};
+const archiveLoads = new Map<string, Promise<void>>();
+const archiveLoadState = new Map<string, string>();
+const archiveLoadErrors = new Map<string, string>();
+let archiveLoadQueue: Promise<void> = Promise.resolve();
+function loadRepositoryArchives(id: string): Promise<void> {
+  const existing = archiveLoads.get(id);
+  if (existing) return existing;
+  archiveLoadErrors.delete(id);
+  archiveLoadState.set(id, "Waiting to load archives…");
+  const task = archiveLoadQueue
+    .catch(() => {})
+    .then(async () => {
+      try {
+        while (status.busy) {
+          if (repositoryPanels.get(id) !== "archives" || !repo(id)) return;
+          await new Promise((resolve) => setTimeout(resolve, 250));
+        }
+        if (repositoryPanels.get(id) !== "archives" || !repo(id)) return;
+        archiveLoadState.set(id, "Loading archives…");
+        render();
+        await operation("archives", id);
+      } catch (error) {
+        archiveLoadErrors.set(id, String(error));
+      } finally {
+        archiveLoadState.delete(id);
+        archiveLoads.delete(id);
+        render();
+      }
+    });
+  archiveLoads.set(id, task);
+  archiveLoadQueue = task;
+  render();
+  return task;
+}
 let info: Record<string, any> = {};
 const archiveBrowser = new ArchiveBrowser();
 let fileArchive = "";
@@ -332,6 +368,22 @@ function repositoryProfiles(id: string) {
   );
   return `<div class="section-heading"><h3>Backup profiles</h3>${button("New profile", "add-profile", "plus", `data-id="${e(id)}" ${disabled()}`)}</div>${profiles.map(profileCard).join("") || '<p class="muted">No profiles for this repository yet.</p>'}<div data-profile-host="${e(id)}">${profileForm && profileRepositoryId === id ? `<h3 class="inline-editor-title">${e(profileTitle)}</h3>` : ""}</div><p class="field-help">${status.workerRunning ? "The background worker runs scheduled profiles with this window closed." : "Keep borgd open for scheduled backups on this platform."} Scheduling is opt-in; 0 means manual. Encrypted repositories need a session passphrase. No automatic pruning is performed.</p>`;
 }
+function repositoryLockButton(id: string) {
+  const unlocked = status.unlocked.includes(id);
+  return button(
+    unlocked ? "Lock" : "Unlock",
+    unlocked ? "lock-repository" : "unlock",
+    unlocked ? "lock-open" : "lock-keyhole",
+    `data-id="${e(id)}" data-lock-state="${unlocked ? "unlocked" : "locked"}" title="${unlocked ? "Unlocked: session passphrase set (not verified). Click to lock." : "Locked: no session passphrase set. Click to unlock."}" ${disabled()}`,
+  );
+}
+function repositoryLockIndicator(id: string) {
+  const unlocked = status.unlocked.includes(id);
+  const description = unlocked
+    ? "Unlocked: session passphrase set (not verified)"
+    : "Locked: no session passphrase set";
+  return `<span class="repository-lock-state ${unlocked ? "is-unlocked" : "is-locked"}" role="img" aria-label="${description}" title="${description}">${icon(unlocked ? "lock-open" : "lock-keyhole")}</span>`;
+}
 function repositories() {
   if (!config.repositories.length)
     return empty(
@@ -343,10 +395,10 @@ function repositories() {
     .map((r) => {
       const data = info[r.id];
       const last = status.history.find((h) => h.repositoryId === r.id);
-      return `<article class="repo-card" data-repository="${e(r.id)}" aria-label="${e(r.name)}"><div class="repo-title"><div class="profile-icon">${icon(r.location.startsWith("ssh:") ? "cloud" : "hard-drive")}</div><div><h2>${e(r.name)}</h2><code>${e(r.location)}</code></div>${repositoryRhythm(
+      return `<article class="repo-card" data-repository="${e(r.id)}" aria-label="${e(r.name)}"><div class="repo-title"><div class="profile-icon">${icon(r.location.startsWith("ssh:") ? "cloud" : "hard-drive")}</div><div><div class="repo-name-heading"><h2>${e(r.name)}</h2>${repositoryLockIndicator(r.id)}</div><code>${e(r.location)}</code></div>${repositoryRhythm(
         status.history.filter((entry) => entry.repositoryId === r.id),
         inspectedStorage([r], info)[0]?.size,
-      )}<span class="pill">${status.unlocked.includes(r.id) ? "Session passphrase set" : "Passphrase not set"}</span></div>${data ? `<div class="repo-details"><div><small>ENCRYPTION</small><strong>${e(data.encryption?.mode || "Unknown")}</strong></div><div><small>STORED</small><strong>${bytes(data.cache?.stats?.unique_csize)}</strong></div><div><small>ORIGINAL SIZE</small><strong>${bytes(data.cache?.stats?.total_size)}</strong></div><div><small>ARCHIVES</small><strong>${e(data.archives?.length ?? "--")}</strong></div></div>` : ""}${last && last.exitCode > 1 ? `<div class="repository-error" role="status"><strong>Last operation failed</strong><p>${e(last.message)}</p>${last.message.includes("Repository passphrase is missing or incorrect") ? button("Set session passphrase", "unlock", "key-round", `data-id="${e(r.id)}" ${disabled()}`) : ""}<button class="text-button" data-route="activity">View activity ${icon("arrow-right")}</button></div>` : ""}<div class="repo-actions">${button("Inspect", "info", "refresh-cw", `data-id="${e(r.id)}" title="Inspect this repository to load encryption and storage details." ${disabled()}`)}${(["overview", "profiles", "archives"] as RepositoryPanel[]).map((panel) => `<button class="button panel-toggle" data-action="repo-panel" data-id="${e(r.id)}" data-panel="${panel}" aria-expanded="${repositoryPanels.get(r.id) === panel}" aria-label="${panel === "overview" ? "Overview" : panel === "profiles" ? "Profiles" : "Archives"}" title="${panel === "overview" ? "Overview" : panel === "profiles" ? "Profiles" : "Archives"}" aria-controls="repository-panel-${e(r.id)}">${icon(panel === "overview" ? "layout-dashboard" : panel === "profiles" ? "folders" : "archive")}${panel === "overview" ? "Overview" : panel === "profiles" ? "Profiles" : "Archives"}</button>`).join("")}${status.unlocked.includes(r.id) ? button("Lock", "lock-repository", "lock-keyhole", `data-id="${e(r.id)}" ${disabled()}`) : button("Unlock", "unlock", "key-round", `data-id="${e(r.id)}" ${disabled()}`)}${button("Check", "check", "shield-check", `data-id="${e(r.id)}" ${disabled()}`)}${button("Initialize", "initialize", "plus", `data-id="${e(r.id)}" ${disabled()}`)}<button class="text-button danger push-right" data-action="forget-repo" data-id="${e(r.id)}" ${status.busy ? "disabled" : ""} aria-label="Forget repository" title="Forget repository (leave all archives on disk)">${icon("trash-2")}<span class="button-label">Forget</span></button></div><div data-unlock-host="${e(r.id)}"></div>${repositoryPanels.has(r.id) ? `<section class="repository-panel" id="repository-panel-${e(r.id)}" aria-label="${e(r.name)} ${repositoryPanels.get(r.id)}">${repositoryPanels.get(r.id) === "overview" ? repositoryOverview(r.id) : repositoryPanels.get(r.id) === "profiles" ? repositoryProfiles(r.id) : archiveView(r.id)}</section>` : ""}</article>`;
+      )}<span class="pill">${status.unlocked.includes(r.id) ? "Session passphrase set" : "Passphrase not set"}</span></div>${data ? `<div class="repo-details"><div><small>ENCRYPTION</small><strong>${e(data.encryption?.mode || "Unknown")}</strong></div><div><small>STORED</small><strong>${bytes(data.cache?.stats?.unique_csize)}</strong></div><div><small>ORIGINAL SIZE</small><strong>${bytes(data.cache?.stats?.total_size)}</strong></div><div><small>ARCHIVES</small><strong>${e(data.archives?.length ?? "--")}</strong></div></div>` : ""}${last && last.exitCode > 1 ? `<div class="repository-error" role="status"><strong>Last operation failed</strong><p>${e(last.message)}</p>${last.message.includes("Repository passphrase is missing or incorrect") ? button("Set session passphrase", "unlock", "key-round", `data-id="${e(r.id)}" ${disabled()}`) : ""}<button class="text-button" data-route="activity">View activity ${icon("arrow-right")}</button></div>` : ""}<div class="repo-actions">${repositoryLockButton(r.id)}${button("Inspect", "info", "refresh-cw", `data-id="${e(r.id)}" title="Inspect this repository to load encryption and storage details." ${disabled()}`)}${(["overview", "profiles", "archives"] as RepositoryPanel[]).map((panel) => `<button class="button panel-toggle" data-action="repo-panel" data-id="${e(r.id)}" data-panel="${panel}" aria-expanded="${repositoryPanels.get(r.id) === panel}" aria-label="${panel === "overview" ? "Overview" : panel === "profiles" ? "Profiles" : "Archives"}" title="${panel === "overview" ? "Overview" : panel === "profiles" ? "Profiles" : "Archives"}" aria-controls="repository-panel-${e(r.id)}">${icon(panel === "overview" ? "layout-dashboard" : panel === "profiles" ? "folders" : "archive")}${panel === "overview" ? "Overview" : panel === "profiles" ? "Profiles" : "Archives"}</button>`).join("")}${button("Check", "check", "shield-check", `data-id="${e(r.id)}" ${disabled()}`)}${button("Initialize", "initialize", "plus", `data-id="${e(r.id)}" ${disabled()}`)}<button class="text-button danger push-right" data-action="forget-repo" data-id="${e(r.id)}" ${status.busy ? "disabled" : ""} aria-label="Forget repository" title="Forget repository (leave all archives on disk)">${icon("trash-2")}<span class="button-label">Forget</span></button></div><div data-unlock-host="${e(r.id)}"></div>${repositoryPanels.has(r.id) ? `<section class="repository-panel" id="repository-panel-${e(r.id)}" aria-label="${e(r.name)} ${repositoryPanels.get(r.id)}">${repositoryPanels.get(r.id) === "overview" ? repositoryOverview(r.id) : repositoryPanels.get(r.id) === "profiles" ? repositoryProfiles(r.id) : archiveView(r.id)}</section>` : ""}</article>`;
     })
     .join("");
 }
@@ -362,6 +414,13 @@ function archiveView(id: string) {
       "Connect a repository, then create your first backup.",
     );
   const list = archives[id];
+  const loadState = archiveLoadState.get(id);
+  const loadError = archiveLoadErrors.get(id);
+  const loadingMarkup = loadState
+    ? `<p class="archive-load-status" role="status">${e(loadState)}</p>`
+    : loadError
+      ? `<div class="archive-load-error" role="alert"><strong>Could not load archives</strong><p>${e(loadError)}</p>${list ? "<p>Showing the previously loaded list; it may be out of date.</p>" : ""}${button("Retry loading archives", "load-archives", "refresh-cw", `data-id="${e(id)}" ${disabled()}`)}</div>`
+      : "";
   const filtered = sortArchives(
     (list ?? []).filter((a) =>
       a.name.toLowerCase().includes(archiveFilter.toLowerCase()),
@@ -371,7 +430,7 @@ function archiveView(id: string) {
   );
   const heading = (label: string, column: ArchiveColumn, title = "") =>
     `<th aria-sort="${archiveSort === column ? (archiveDirection === "asc" ? "ascending" : "descending") : "none"}"><button class="archive-sort" data-action="sort-archives" data-id="${e(id)}" data-column="${column}" title="${e(title || `Sort by ${label}`)}">${label}<span aria-hidden="true">${archiveSort === column ? (archiveDirection === "asc" ? "&#9650;" : "&#9660;") : "&#8597;"}</span></button></th>`;
-  return `<div class="archive-toolbar"><label class="search">${icon("search")}<input class="archive-search" data-repository="${e(id)}" placeholder="Find an archive..." value="${e(archiveFilter)}" aria-label="Filter archives"></label>${button("Refresh", "load-archives", "refresh-cw", `data-id="${e(id)}" ${disabled()}`)}</div>${list ? `<div class="table-wrap archive-list"><table class="archive-table"><thead><tr>${heading("Archive", "name")}${heading("Created", "time")}${heading("Files backed up", "files")}${heading("Total size", "size", "Original archive size before compression and deduplication, as reported by Borg")}<th class="align-right">Actions</th></tr></thead><tbody>${filtered!.map((a) => `<tr><td><div class="archive-name">${icon("archive")}<code title="${e(a.name)}">${e(a.name)}</code></div></td><td class="nowrap">${e(Number.isFinite(Date.parse(a.time || a.start || "")) ? date(a.time || a.start) : "Unavailable")}</td><td class="nowrap">${typeof a.stats?.nfiles === "number" ? a.stats.nfiles.toLocaleString() : "Unavailable"}</td><td class="nowrap">${typeof a.stats?.original_size === "number" ? bytes(a.stats.original_size) : "Unavailable"}</td><td><div class="row-actions">${button("Browse", "files", "folder-search", `data-archive="${e(a.name)}" data-repository="${e(id)}" ${disabled()}`)}${button("Restore", "restore", "download", `data-archive="${e(a.name)}" data-repository="${e(id)}" ${disabled()}`)}</div></td></tr>`).join("") || '<tr><td colspan="5" class="table-empty">No archives found.</td></tr>'}</tbody></table></div><p class="muted">${list.length} archives in this repository. Restores always go into an empty folder.</p>` : empty("A point in time, always within reach", "Refresh to securely load the archives in this repository.", button("Load archives", "load-archives", "refresh-cw", `data-id="${e(id)}" ${disabled()}`))}`;
+  return `<div class="archive-toolbar"><label class="search">${icon("search")}<input class="archive-search" data-repository="${e(id)}" placeholder="Find an archive..." value="${e(archiveFilter)}" aria-label="Filter archives"></label>${button("Refresh", "load-archives", "refresh-cw", `data-id="${e(id)}" ${loadState ? "disabled" : disabled()}`)}</div>${loadingMarkup}${list?.length ? `<div class="table-wrap archive-list"><table class="archive-table"><thead><tr>${heading("Archive", "name")}${heading("Created", "time")}${heading("Files backed up", "files")}${heading("Total size", "size", "Original archive size before compression and deduplication, as reported by Borg")}<th class="align-right">Actions</th></tr></thead><tbody>${filtered!.map((a) => `<tr><td><div class="archive-name">${icon("archive")}<code title="${e(a.name)}">${e(a.name)}</code></div></td><td class="nowrap">${e(Number.isFinite(Date.parse(a.time || a.start || "")) ? date(a.time || a.start) : "Unavailable")}</td><td class="nowrap">${typeof a.stats?.nfiles === "number" ? a.stats.nfiles.toLocaleString() : "Unavailable"}</td><td class="nowrap">${typeof a.stats?.original_size === "number" ? bytes(a.stats.original_size) : "Unavailable"}</td><td><div class="row-actions">${button("Browse", "files", "folder-search", `data-archive="${e(a.name)}" data-repository="${e(id)}" ${disabled()}`)}${button("Restore", "restore", "download", `data-archive="${e(a.name)}" data-repository="${e(id)}" ${disabled()}`)}</div></td></tr>`).join("") || '<tr><td colspan="5" class="table-empty">No matching archives.</td></tr>'}</tbody></table></div><p class="muted">${list.length} archives in this repository. Restores always go into an empty folder.</p>` : loadState || loadError ? "" : list ? empty("No archives yet", "This repository does not contain any archives. Create a backup using one of its profiles.") : `<p class="muted">Archives have not been loaded.</p>`}`;
 }
 function activity() {
   return `<section class="activity-workspace" aria-label="Operation activity"><div id="check-progress" aria-live="polite">${checkProgressMarkup()}</div><div class="activity-section-heading"><h2>Operation log</h2><span class="pill ${status.busy ? "success" : ""}" id="activity-state">${status.busy ? "Running" : "Idle"}</span></div><div class="activity-log-panel"><button class="copy-button copy-log" data-action="copy-log" aria-label="Copy operation log" title="Copy operation log" ${status.logs.length ? "" : "disabled"}>${icon("copy")}</button><pre class="terminal" id="terminal" tabindex="0" aria-label="Borg operation output">${e(status.logs.join("\n") || "No operations in this session.\nYour Borg output will appear here as it happens.")}</pre></div><div class="activity-section-heading"><h2>Recent activity</h2><span class="muted">Last 200 operations</span></div>${status.history.length ? `<div class="table-wrap activity-history" tabindex="0" role="region" aria-label="Recent activity history"><table><thead><tr><th>Operation</th><th>Repository</th><th>Time</th><th>Result</th><th class="copy-column"><span class="sr-only">Copy details</span></th></tr></thead><tbody>${status.history.map((h) => `<tr><td class="capitalize">${e(h.action)}</td><td>${e(h.repositoryName ?? repo(h.repositoryId)?.name ?? "Forgotten repository")}</td><td>${e(date(h.time))}</td><td><span title="${e(h.message)}" class="pill ${h.exitCode === 0 ? "success" : h.exitCode === 1 ? "warning" : "failure"}">${h.exitCode === 0 ? "Completed" : h.exitCode === 1 ? "Warning" : "Failed"}</span></td><td class="copy-column"><button class="copy-button" data-action="copy-history" data-id="${e(h.id ?? "")}" data-time="${e(h.time)}" data-operation="${e(h.action)}" data-repository="${e(h.repositoryId)}" aria-label="Copy details for ${e(h.action)} at ${e(date(h.time))}" title="Copy full operation details">${icon("copy")}</button></td></tr>`).join("")}</tbody></table></div>` : `<div class="activity-empty">${empty("A clean slate", "Backup results, checks, and restores will be recorded here.")}</div>`}</section>`;
@@ -1075,6 +1134,8 @@ async function handleAction(action: string, element: HTMLElement) {
           `[data-action="repo-panel"][data-id="${CSS.escape(id)}"][data-panel="${panel}"]`,
         )
         ?.focus({ preventScroll: true });
+      if (panel === "archives" && repositoryPanels.get(id) === "archives")
+        await loadRepositoryArchives(id);
       break;
     }
     case "sort-archives": {
@@ -1093,7 +1154,7 @@ async function handleAction(action: string, element: HTMLElement) {
       break;
     }
     case "load-archives":
-      await operation("archives", id);
+      await loadRepositoryArchives(id);
       break;
     case "archive-back":
       repositoryId = fileRepositoryId;
@@ -1185,6 +1246,8 @@ async function handleAction(action: string, element: HTMLElement) {
           if (unlockRepositoryId === id) clearUnlock();
           repositoryPanels.delete(id);
           archiveStates.delete(id);
+          archiveLoadErrors.delete(id);
+          archiveLoadState.delete(id);
           delete archives[id];
           delete info[id];
           render();
@@ -1259,11 +1322,13 @@ async function start() {
   setInterval(async () => {
     try {
       const previousBusy = status.busy;
+      const previousUnlocks = JSON.stringify(status.unlocked);
       const previousHistory =
         route === "repositories" ? overviewHistoryKey() : "";
       await refreshStatus();
       if (
         previousBusy !== status.busy ||
+        previousUnlocks !== JSON.stringify(status.unlocked) ||
         (route === "repositories" &&
           (previousHistory !== overviewHistoryKey() ||
             overviewRenderedDay !== new Date().toDateString()))

@@ -1,3 +1,48 @@
+.repo-name-heading {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 7px;
+}
+.repo-name-heading h2 {
+  margin-bottom: 0;
+}
+.repository-lock-state {
+  display: inline-flex;
+}
+.repository-lock-state svg {
+  width: 15px;
+  height: 15px;
+}
+.repository-lock-state.is-unlocked,
+.repo-actions [data-lock-state="unlocked"] {
+  color: var(--green);
+}
+.repository-lock-state.is-locked,
+.repo-actions [data-lock-state="locked"] {
+  color: var(--danger);
+}
+.repo-actions [data-lock-state="unlocked"] {
+  border-color: #8ec8aa60;
+  background: #8ec8aa0c;
+}
+.repo-actions [data-lock-state="locked"] {
+  border-color: #ee939b60;
+  background: #ee939b0c;
+}
+.archive-load-status {
+  color: var(--muted);
+  padding: 16px 0;
+}
+.archive-load-error {
+  border-left: 2px solid var(--danger);
+  padding: 12px 18px;
+  margin: 16px 0;
+}
+.archive-load-error p {
+  margin: 10px 0;
+  color: var(--muted);
+}
 .top-brand {
   display: flex;
   align-items: center;

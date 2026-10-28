@@ -260,3 +260,5 @@ Right-click a Theme Studio preview (or focus it and use Shift+F10/Menu) and choo
 Theme Studio places its single-column preview grid on the left and Custom controls on the right (stacked on narrow screens). Click a color swatch to open the direct color editor, initialized to that exact current color. Adjust RGB sliders or the hex value, then Apply color; Cancel or Escape leaves the theme unchanged. This avoids the native palette dialog resetting its custom editor to an unrelated color.
 
 Archive context menus use wider, full-width action rows. The diff comparison dropdown lists repository archives by creation date descending (unknown dates last); the selected snapshot is visible but disabled to prevent comparing it with itself. The diff Back button sits immediately to the left of the title.
+
+Backup profiles rows include a tooltip-labelled Preview prune action between Edit and Back up, matching Quick profiles. It uses the profile-scoped, non-destructive preview flow and requires confirmation before running; it does not apply retention or delete archives.

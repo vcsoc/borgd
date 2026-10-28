@@ -281,6 +281,7 @@ def main():
                 print("PASS: native context-menu restore extracts only the selected file and excludes its sibling")
                 js("document.querySelector('[data-route=\"repositories\"]').click(); document.querySelector('[data-panel=\"profiles\"][data-id=\"relocation-native\"]').click(); document.querySelector('[data-action=\"edit-profile\"]').click()")
                 assert js("return !!document.querySelector('#profile-form') && !document.querySelector('dialog[open]') && document.querySelector('#pick-source').textContent.trim() === '+ Source'")
+                assert js("return !!document.querySelector('.profile-card [data-action=\"prune-preview\"]') && document.querySelector('.profile-card [data-action=\"prune-preview\"]').title.includes('Preview prune')")
                 Path("test-results/native-profile-editor.png").write_bytes(base64.b64decode(request("GET", root + "/screenshot")))
                 assert js("const input=document.querySelector('#profile-form [name=intervalHours]'); input.value='20'; input.scrollIntoView({block:'center'}); input.focus(); input.select(); return input.type==='text' && input.inputMode==='numeric' && input.selectionStart===0 && input.selectionEnd===2 && getComputedStyle(input,'::selection').backgroundColor !== getComputedStyle(input).backgroundColor")
                 Path("test-results/native-profile-selection.png").write_bytes(base64.b64decode(request("GET", root + "/screenshot")))

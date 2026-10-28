@@ -61,11 +61,13 @@ async function desktop(page: Page, supported = true, single = false) {
                   archives: (single
                     ? ["latest"]
                     : ["latest", "older", "oldest"]
-                  ).map((name, index) => ({
-                    name,
-                    time: `2026-01-0${3 - index}T00:00:00Z`,
-                    stats: { nfiles: 3, original_size: 100 },
-                  })).reverse(),
+                  )
+                    .map((name, index) => ({
+                      name,
+                      time: `2026-01-0${3 - index}T00:00:00Z`,
+                      stats: { nfiles: 3, original_size: 100 },
+                    }))
+                    .reverse(),
                 },
               };
             if (request.action === "info")
@@ -457,26 +459,94 @@ test("Go to reports paths absent from both snapshots without selecting or extrac
   ).toBe(false);
 });
 
-test("context rows fill a wider menu, comparisons list newest first and Back sits left of the title", async ({ page }) => {
+test("context rows fill a wider menu, comparisons list newest first and Back sits left of the title", async ({
+  page,
+}) => {
   await desktop(page);
   await page.locator('[data-panel="archives"][data-id="a"]').click();
-  await page.locator('.archive-table tbody tr').first().click({ button: "right" });
-  const geometry = await page.getByRole("menu", { name: "Archive actions" }).evaluate(menu => {
-    const box = menu.getBoundingClientRect();
-    return { width: box.width, rows: [...menu.querySelectorAll('button')].map(item => item.getBoundingClientRect().width) };
-  });
+  await page
+    .locator(".archive-table tbody tr")
+    .first()
+    .click({ button: "right" });
+  const geometry = await page
+    .getByRole("menu", { name: "Archive actions" })
+    .evaluate((menu) => {
+      const box = menu.getBoundingClientRect();
+      return {
+        width: box.width,
+        rows: [...menu.querySelectorAll("button")].map(
+          (item) => item.getBoundingClientRect().width,
+        ),
+      };
+    });
   expect(geometry.width).toBeGreaterThanOrEqual(200);
-  expect(geometry.rows.every(width => width >= geometry.width - 14)).toBe(true);
+  expect(geometry.rows.every((width) => width >= geometry.width - 14)).toBe(
+    true,
+  );
   await page.getByRole("menuitem", { name: "View diff", exact: true }).click();
-  expect(await page.locator('#diff-base option').evaluateAll(options => options.map(option => (option as HTMLOptionElement).value))).toEqual(["latest", "older", "oldest"]);
-  await expect(page.locator('#diff-base option[value="latest"]')).toHaveAttribute("disabled", "");
-  await expect(page.locator('#diff-base')).toHaveValue("older");
-  expect(await page.evaluate(() => {
-    const back = document.querySelector('[data-action="diff-back"]')!.getBoundingClientRect();
-    const title = document.querySelector('.page-heading h1')!.getBoundingClientRect();
-    return back.right < title.left && Math.abs(back.top + back.height / 2 - title.top - title.height / 2) < 2;
-  })).toBe(true);
-  await page.evaluate(() => { document.documentElement.style.fontSize = "20px"; document.documentElement.dataset.buttonMode = "text"; });
+  expect(
+    await page
+      .locator("#diff-base option")
+      .evaluateAll((options) =>
+        options.map((option) => (option as HTMLOptionElement).value),
+      ),
+  ).toEqual(["latest", "older", "oldest"]);
+  await expect(
+    page.locator('#diff-base option[value="latest"]'),
+  ).toHaveAttribute("disabled", "");
+  await expect(page.locator("#diff-base")).toHaveValue("older");
+  expect(
+    await page.evaluate(() => {
+      const back = document
+        .querySelector('[data-action="diff-back"]')!
+        .getBoundingClientRect();
+      const title = document
+        .querySelector(".page-heading h1")!
+        .getBoundingClientRect();
+      return (
+        back.right < title.left &&
+        Math.abs(back.top + back.height / 2 - title.top - title.height / 2) < 2
+      );
+    }),
+  ).toBe(true);
+  await page.evaluate(() => {
+    document.documentElement.style.fontSize = "20px";
+    document.documentElement.dataset.buttonMode = "text";
+  });
   await page.setViewportSize({ width: 390, height: 844 });
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+});
+
+test("profile rows expose scoped prune previews between edit and backup without deleting archives", async ({
+  page,
+}) => {
+  await desktop(page);
+  await page.locator('[data-panel="profiles"][data-id="a"]').click();
+  const row = page.locator(".profile-card").first();
+  expect(
+    await row
+      .locator("button")
+      .evaluateAll((buttons) => buttons.map((button) => button.dataset.action)),
+  ).toEqual(["edit-profile", "prune-preview", "backup"]);
+  const prune = row.getByRole("button", {
+    name: "Preview prune: Profile 0",
+    exact: true,
+  });
+  await expect(prune).toHaveAttribute("title", "Preview prune for Profile 0");
+  await prune.click();
+  await expect(page.getByRole("dialog")).toBeVisible();
+  await expect(page.getByRole("dialog")).toContainText(
+    "without deleting anything",
+  );
+  expect(
+    await page.evaluate(() =>
+      (window as any).__operations.some((r: any) =>
+        r.action.startsWith("prune"),
+      ),
+    ),
+  ).toBe(false);
 });

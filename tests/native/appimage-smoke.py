@@ -157,7 +157,7 @@ def main():
                 assert invoke("get_status")["busy"] is False
                 Path("test-results/native-relocation.png").write_bytes(base64.b64decode(request("GET", root + "/screenshot")))
                 js("document.querySelector('.relocation-dialog button[type=submit]').click()")
-                until(lambda: js("return !document.querySelector('.relocation-dialog') && !!document.querySelector('.repo-details')"))
+                until(lambda: js("return !document.querySelector('.relocation-dialog') && [...document.querySelectorAll('.repo-details strong')].some(node => node.textContent === 'none')"))
                 entry = invoke("get_status")["history"][0]
                 assert entry["exitCode"] == 0
                 details = invoke("get_history_details", {"id": entry["id"]})
@@ -191,6 +191,9 @@ def main():
                 assert archive_record["stats"]["original_size"] > 0
                 listing = invoke("run_operation", {"request": {"action": "files", "repositoryId": "relocation-native", "archive": archive}})["data"]
                 stored_path = next(item["path"] for item in listing if item["path"].endswith("native-file.txt"))
+                (source / "not-selected.txt").write_text("A changed sibling for the read-only archive diff test")
+                invoke("run_operation", {"request": {"action": "backup", "repositoryId": "relocation-native", "profileId": "native-profile"}})
+
                 request("POST", root + "/refresh", {})
                 until(lambda: js("return document.querySelector('.engine-status')?.textContent.includes(arguments[0])", [expected_version]))
                 encrypted_repo = Path(temp) / "inline-encrypted"
@@ -217,7 +220,7 @@ def main():
                 assert js("const row=document.querySelector('.repo-card[data-repository=\"inline-encrypted\"]'); const first=row.querySelector('.repo-actions > button'); return first.dataset.lockState==='unlocked' && !!first.querySelector('svg.lucide-lock-open') && !!row.querySelector('.repository-lock-state.is-unlocked svg.lucide-lock-open')")
                 print("PASS: native inline password field unlocks a real encrypted Borg repository; Inspect verifies access without a modal or persisted passphrase")
                 js("document.querySelector('[data-action=\"info\"][data-id=\"relocation-native\"]').click()")
-                until(lambda: js("return [...document.querySelectorAll('.repo-card')].some(row => row.textContent.includes('Relocation test') && row.querySelector('.repo-details'))"))
+                until(lambda: js("return [...document.querySelectorAll('.repo-card')].some(row => row.textContent.includes('Relocation test') && [...row.querySelectorAll('.repo-details strong')].some(node => node.textContent === 'none'))"))
                 assert js("return [...document.querySelectorAll('.repo-card')].every(row => getComputedStyle(row).backgroundColor === 'rgba(0, 0, 0, 0)')")
                 js("document.querySelector('[data-route=\"repositories\"]').click(); document.querySelector('[data-panel=\"overview\"][data-id=\"relocation-native\"]').click()")
                 assert js("return !!document.querySelector('.trend-chart') && document.querySelectorAll('.heatmap > .heat-cell').length === 84 && document.querySelectorAll('.donut-chart').length === 2")
@@ -231,6 +234,20 @@ def main():
                 assert js("return document.querySelector('tbody tr').children[2].textContent.trim() === '2'")
                 Path("test-results/native-archive-statistics.png").write_bytes(base64.b64decode(request("GET", root + "/screenshot")))
                 print("PASS: native archive panel automatically loads on opening, defaults to date descending, and displays real Borg counts and sizes")
+                js("document.querySelector('.archive-table tbody tr[data-archive-row]').dispatchEvent(new MouseEvent('contextmenu',{bubbles:true,cancelable:true,clientX:400,clientY:420}))")
+                until(lambda: js("return !!document.querySelector('[role=menu][aria-label=\"Archive actions\"]')"))
+                js("document.querySelector('[role=menuitem]').click()")
+                try:
+                    until(lambda: js("return !!document.querySelector('.archive-diff') && !document.querySelector('.archive-diff .repository-error') && (!!document.querySelector('.archive-diff-table') || document.querySelector('.archive-diff').textContent.includes('No differences found between these archives.'))"))
+                except AssertionError:
+                    Path("test-results/native-diff-failure.txt").write_text(js("return document.querySelector('.content').textContent"))
+                    raise
+                assert worker_rpc("get_status")["history"][0]["action"] == "diff"
+                Path("test-results/native-archive-diff.png").write_bytes(base64.b64decode(request("GET", root + "/screenshot")))
+                js("document.querySelector('[data-action=\"diff-back\"]').click()")
+                until(lambda: js("return !!document.querySelector('.repo-header .repo-actions') && !!document.querySelector('.quick-profile-list') && !!document.querySelector('[data-action=\"files\"]')"))
+                print("PASS: native right-click archive comparison runs real read-only Borg diff and returns to redesigned repository headers and quick profiles")
+
                 js("document.querySelector('[data-action=\"files\"]').click()")
                 until(lambda: js("return !!document.querySelector('[aria-label=\"Archive folder tree\"]') && !document.querySelector('dialog[open]')"))
                 parts = [part for part in stored_path.split("/") if part and part != "."]

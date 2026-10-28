@@ -89,6 +89,7 @@ pub struct Request {
     pub encrypted: Option<bool>,
     pub dry_run: Option<bool>,
     pub selected_paths: Option<Vec<String>>,
+    pub compare_archive: Option<String>,
 }
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -606,6 +607,29 @@ impl Backend {
                 repo.location.clone(),
             ]),
             "files" => args.extend(["list".into(), "--json-lines".into(), archive()?]),
+            "diff" => {
+                let second = request
+                    .compare_archive
+                    .as_deref()
+                    .ok_or("Choose a comparison archive")?;
+                if second.is_empty()
+                    || second.starts_with('-')
+                    || second.contains(['/', '\\', '\0'])
+                    || second.contains("::")
+                {
+                    return Err("Invalid comparison archive name".into());
+                }
+                if request.archive.as_deref() == Some(second) {
+                    return Err("Choose two different archives".into());
+                }
+                args.extend([
+                    "diff".into(),
+                    "--json-lines".into(),
+                    "--sort".into(),
+                    archive()?,
+                    second.into(),
+                ]);
+            }
             "backup" => {
                 let p = profile()?;
                 let name = format!(
@@ -806,7 +830,7 @@ impl Backend {
             }
             return Err(crate::activity::error_summary(code, &status.logs));
         }
-        let mut data: Value = if request.action == "files" {
+        let mut data: Value = if matches!(request.action.as_str(), "files" | "diff") {
             let lines: Result<Vec<Value>, _> = text
                 .lines()
                 .filter(|l| !l.is_empty())
@@ -935,6 +959,57 @@ pub fn probe() -> Result<String, String> {
 mod tests {
     use super::*;
     #[test]
+    fn real_borg_archive_diff_is_read_only_and_scoped() {
+        if probe().is_err() {
+            return;
+        }
+        let dir = tempfile::tempdir().unwrap();
+        let source = dir.path().join("source");
+        fs::create_dir(&source).unwrap();
+        fs::write(source.join("changed.txt"), "before").unwrap();
+        let backend = Backend::new(dir.path().join("config"));
+        backend
+            .save(config(
+                dir.path().join("repo").display().to_string(),
+                source.display().to_string(),
+            ))
+            .unwrap();
+        let mut init = request("init");
+        init.encrypted = Some(false);
+        backend.execute(init).unwrap();
+        let first = backend.execute(request("backup")).unwrap().data["archive"]["name"]
+            .as_str()
+            .unwrap()
+            .to_owned();
+        fs::write(source.join("changed.txt"), "after with a different size").unwrap();
+        fs::write(source.join("added.txt"), "new file").unwrap();
+        let second = backend.execute(request("backup")).unwrap().data["archive"]["name"]
+            .as_str()
+            .unwrap()
+            .to_owned();
+        let mut diff = request("diff");
+        diff.archive = Some(first.clone());
+        diff.compare_archive = Some(second.clone());
+        let output = backend.execute(diff.clone()).unwrap();
+        assert!(output.data.as_array().unwrap().iter().any(|row| row["path"]
+            .as_str()
+            .is_some_and(|p| p.ends_with("changed.txt"))));
+        assert!(output.data.as_array().unwrap().iter().any(|row| row["path"]
+            .as_str()
+            .is_some_and(|p| p.ends_with("added.txt"))));
+        assert_eq!(
+            backend.execute(request("archives")).unwrap().data["archives"]
+                .as_array()
+                .unwrap()
+                .len(),
+            2
+        );
+        diff.compare_archive = Some("other-repo::archive".into());
+        assert!(backend.execute(diff.clone()).is_err());
+        diff.compare_archive = Some(first);
+        assert!(backend.execute(diff).is_err());
+    }
+    #[test]
     fn short_archive_codes_are_unique_stable_and_persisted() {
         let directory = tempfile::tempdir().unwrap();
         let backend = Backend::new(directory.path().to_path_buf());
@@ -991,6 +1066,7 @@ mod tests {
             encrypted: Some(false),
             dry_run: Some(true),
             selected_paths: None,
+            compare_archive: None,
         }
     }
     #[test]
@@ -1085,6 +1161,7 @@ mod tests {
             encrypted: None,
             dry_run: None,
             selected_paths: None,
+            compare_archive: None,
         }
     }
     #[test]

@@ -38,6 +38,7 @@ import {
   Plus,
   RefreshCw,
   Scissors,
+  GitCompareArrows,
   Square,
   Search,
   Settings2,
@@ -82,6 +83,7 @@ const icons = {
   Plus,
   RefreshCw,
   Scissors,
+  GitCompareArrows,
   Square,
   Search,
   Settings2,
@@ -122,6 +124,7 @@ import { analyticsView, inspectedStorage } from "./analytics";
 import "./flat.css";
 import "./repository-workspace.css";
 import "./compact.css";
+import "./repository-redesign.css";
 import licenseText from "../LICENSE?raw";
 import {
   decorateButtons,
@@ -259,6 +262,12 @@ function empty(title: string, description: string, action = "") {
   return `<div class="empty">${icon("archive")}<h2>${title}</h2><p>${description}</p>${action}</div>`;
 }
 function render() {
+  closeArchiveMenu();
+  const quickScroll = new Map(
+    [...app.querySelectorAll<HTMLElement>("[data-quick-profiles]")].map(
+      (node) => [node.dataset.quickProfiles!, node.scrollTop],
+    ),
+  );
   const archiveScroll = new Map(
     [...app.querySelectorAll<HTMLElement>(".repo-card[data-repository]")].map(
       (row) => [
@@ -279,6 +288,10 @@ function render() {
   const pages: Record<string, [string, string]> = {
     repositories: ["Repositories", "Your backups, organized by destination."],
     activity: ["Activity", "A clear record of every operation."],
+    archiveDiff: [
+      "Archive diff",
+      "Compare two saved snapshots without extracting or changing them.",
+    ],
     archiveFiles: [
       "Archive contents",
       "Browse a saved snapshot without extracting files.",
@@ -294,11 +307,11 @@ function render() {
   ]
     .map(
       ([id, glyph, label]) =>
-        `<button class="nav ${route === id || (route === "archiveFiles" && id === "repositories") ? "active" : ""}" data-route="${id}" aria-label="${label}" title="${label}" ${route === id ? 'aria-current="page"' : ""}>${icon(glyph)}</button>`,
+        `<button class="nav ${route === id || (["archiveFiles", "archiveDiff"].includes(route) && id === "repositories") ? "active" : ""}" data-route="${id}" aria-label="${label}" title="${label}" ${route === id ? 'aria-current="page"' : ""}>${icon(glyph)}</button>`,
     )
     .join(
       "",
-    )}</nav></aside><main><header class="toolbar"><button class="top-brand" data-route="about" aria-label="About borgd" title="About borgd"><strong>borgd</strong><span class="version">0.1</span><span class="brand-tagline">BACKUP COMPANION</span></button><div class="top-tools"><div class="engine-status" role="status" title="${e(status.busy ? `${version} · Operation in progress` : version)}"><span class="dot ${status.busy ? "amber pulse" : available ? "green" : "amber"}"></span><span>${e(version)}</span>${status.busy ? '<span id="running-label">Working</span>' : ""}</div>${topIcon("Terminal", "terminal", `data-action="toggle-terminal" aria-expanded="${terminalDock.visible}"`)}${topIcon("Settings & help", "settings-2", 'data-route="settings"')}</div></header><div class="content ${route === "activity" || route === "archiveFiles" ? "activity-content" : ""}"><div class="page-heading"><div><div class="eyebrow">YOUR BACKUP WORKSPACE</div><h1>${pages[route][0]}</h1><p>${pages[route][1]}</p></div>${route === "archiveFiles" ? button("Back to archives", "archive-back", "arrow-left") : route === "repositories" ? button("Add repository", "add-repo", "plus", status.busy ? "disabled" : "", true) : ""}</div>${initialized && !available && isFreshInstallation(config, status.history) ? `<div class="notice">${icon("info")}<div><strong>${isTauri() ? "Borg needs a little setup" : "Desktop preview"}</strong><p>${isTauri() ? e(error || "Looking for Borg 1.x on this computer.") : "This is the browser preview. Run the Tauri desktop app to connect repositories and execute real backups."}</p></div>${button("Setup guide", "setup", "arrow-up-right")}</div>` : ""}<div id="view">${view()}</div></div><footer><span>${icon("lock-keyhole")} Passphrases stay in memory, never on disk.</span><span id="footer-status">${status.busy ? (status.workerRunning ? "Backup worker is running. You may close this window." : "Keep borgd open until this operation finishes.") : status.workerRunning ? "Background backup worker connected" : status.workerOffline ? "Background worker stopped — Start it in Settings" : "Powered by Borg Backup"}</span></footer></main></div>`;
+    )}</nav></aside><main><header class="toolbar"><button class="top-brand" data-route="about" aria-label="About borgd" title="About borgd"><strong>borgd</strong><span class="version">0.1</span><span class="brand-tagline">BACKUP COMPANION</span></button><div class="top-tools"><div class="engine-status" role="status" title="${e(status.busy ? `${version} · Operation in progress` : version)}"><span class="dot ${status.busy ? "amber pulse" : available ? "green" : "amber"}"></span><span>${e(version)}</span>${status.busy ? '<span id="running-label">Working</span>' : ""}</div>${topIcon("Terminal", "terminal", `data-action="toggle-terminal" aria-expanded="${terminalDock.visible}"`)}${topIcon("Settings & help", "settings-2", 'data-route="settings"')}</div></header><div class="content ${route === "activity" || route === "archiveFiles" ? "activity-content" : ""}"><div class="page-heading"><div><div class="eyebrow">YOUR BACKUP WORKSPACE</div><h1>${pages[route][0]}</h1><p>${pages[route][1]}</p></div>${route === "archiveDiff" ? button("Back to archives", "diff-back", "arrow-left") : route === "archiveFiles" ? button("Back to archives", "archive-back", "arrow-left") : route === "repositories" ? button("Add repository", "add-repo", "plus", status.busy ? "disabled" : "", true) : ""}</div>${initialized && !available && isFreshInstallation(config, status.history) ? `<div class="notice">${icon("info")}<div><strong>${isTauri() ? "Borg needs a little setup" : "Desktop preview"}</strong><p>${isTauri() ? e(error || "Looking for Borg 1.x on this computer.") : "This is the browser preview. Run the Tauri desktop app to connect repositories and execute real backups."}</p></div>${button("Setup guide", "setup", "arrow-up-right")}</div>` : ""}<div id="view">${view()}</div></div><footer><span>${icon("lock-keyhole")} Passphrases stay in memory, never on disk.</span><span id="footer-status">${status.busy ? (status.workerRunning ? "Backup worker is running. You may close this window." : "Keep borgd open until this operation finishes.") : status.workerRunning ? "Background backup worker connected" : status.workerOffline ? "Background worker stopped — Start it in Settings" : "Powered by Borg Backup"}</span></footer></main></div>`;
   if (route === "archiveFiles" && !archiveLoading && !archiveError) {
     const browserRoot = app.querySelector<HTMLElement>("#archive-browser-root");
     if (browserRoot)
@@ -337,6 +350,12 @@ function render() {
     );
     if (table) table.scrollLeft = left;
   }
+  for (const [id, top] of quickScroll) {
+    const node = app.querySelector<HTMLElement>(
+      `[data-quick-profiles="${CSS.escape(id)}"]`,
+    );
+    if (node) node.scrollTop = top;
+  }
   renderedRoute = route;
   overviewRenderedDay = new Date().toDateString();
   if (profileFocus?.isConnected) profileFocus.focus({ preventScroll: true });
@@ -349,6 +368,7 @@ function view(): string {
   if (route === "repositories") return repositories();
   if (route === "activity") return activity();
   if (route === "archiveFiles") return archiveFilesView();
+  if (route === "archiveDiff") return archiveDiffView();
   return settings();
 }
 function repositoryOverview(id: string) {
@@ -387,6 +407,10 @@ function repositoryLockIndicator(id: string) {
     : "Locked: no session passphrase set";
   return `<span class="repository-lock-state ${unlocked ? "is-unlocked" : "is-locked"}" role="img" aria-label="${description}" title="${description}">${icon(unlocked ? "lock-open" : "lock-keyhole")}</span>`;
 }
+function repositoryQuickProfiles(id: string) {
+  const profiles = config.profiles.filter((p) => p.repositoryId === id);
+  return `<section class="repo-quick-profiles" aria-label="${e(repo(id)?.name)} quick profiles"><div class="quick-profiles-heading"><h3>Quick profiles <span>${profiles.length}</span></h3>${button("New profile", "add-profile", "plus", `data-id="${e(id)}" aria-label="Add profile to ${e(repo(id)?.name)}" ${disabled()}`)}</div><div class="quick-profile-list" data-quick-profiles="${e(id)}" role="list" tabindex="0" aria-label="Backup profiles for ${e(repo(id)?.name)}">${profiles.map((p) => `<div class="quick-profile-row" role="listitem"><div class="quick-profile-info"><strong title="${e(p.name)}">${e(p.name)}</strong><small>${p.intervalHours ? `Every ${p.intervalHours}h` : "Manual backup"} · ${p.sources.length} source${p.sources.length === 1 ? "" : "s"}</small></div><div class="quick-profile-actions">${button("Edit", "edit-profile", "sliders-horizontal", `data-id="${e(p.id)}" aria-label="Edit profile: ${e(p.name)}" ${disabled()}`)}${button("Preview retention", "prune-preview", "list-filter", `data-id="${e(p.id)}" aria-label="Preview retention: ${e(p.name)}" ${disabled()}`)}${button("Back up", "backup", "play", `data-id="${e(p.id)}" aria-label="Back up profile: ${e(p.name)}" ${disabled()}`)}</div></div>`).join("") || '<p class="muted quick-profiles-empty">No profiles for this repository yet.</p>'}</div></section>`;
+}
 function repositories() {
   if (!config.repositories.length)
     return empty(
@@ -398,12 +422,152 @@ function repositories() {
     .map((r) => {
       const data = info[r.id];
       const last = status.history.find((h) => h.repositoryId === r.id);
-      return `<article class="repo-card" data-repository="${e(r.id)}" aria-label="${e(r.name)}"><div class="repo-title"><div class="profile-icon">${icon(r.location.startsWith("ssh:") ? "cloud" : "hard-drive")}</div><div><div class="repo-name-heading"><h2>${e(r.name)}</h2>${repositoryLockIndicator(r.id)}</div><code>${e(r.location)}</code></div>${repositoryRhythm(
-        status.history.filter((entry) => entry.repositoryId === r.id),
+      return `<article class="repo-card" data-repository="${e(r.id)}" aria-label="${e(r.name)}"><header class="repo-header"><div class="repo-title"><div class="profile-icon">${icon(r.location.startsWith("ssh:") ? "cloud" : "hard-drive")}</div><div><div class="repo-name-heading"><h2>${e(r.name)}</h2>${repositoryLockIndicator(r.id)}</div><code title="${e(r.location)}">${e(r.location)}</code></div></div><div class="repo-actions">${repositoryLockButton(r.id)}${button("Inspect", "info", "refresh-cw", `data-id="${e(r.id)}" title="Inspect this repository to load encryption and storage details." ${disabled()}`)}${(["overview", "profiles", "archives"] as RepositoryPanel[]).map((panel) => `<button class="button panel-toggle" data-action="repo-panel" data-id="${e(r.id)}" data-panel="${panel}" aria-expanded="${repositoryPanels.get(r.id) === panel}" aria-label="${panel === "overview" ? "Overview" : panel === "profiles" ? "Profiles" : "Archives"}" title="${panel === "overview" ? "Overview" : panel === "profiles" ? "Profiles" : "Archives"}" aria-controls="repository-panel-${e(r.id)}">${icon(panel === "overview" ? "layout-dashboard" : panel === "profiles" ? "folders" : "archive")}${panel === "overview" ? "Overview" : panel === "profiles" ? "Profiles" : "Archives"}</button>`).join("")}${button("Check", "check", "shield-check", `data-id="${e(r.id)}" ${disabled()}`)}${button("Initialize", "initialize", "plus", `data-id="${e(r.id)}" ${disabled()}`)}<button class="text-button danger push-right" data-action="forget-repo" data-id="${e(r.id)}" ${status.busy ? "disabled" : ""} aria-label="Forget repository" title="Forget repository (leave all archives on disk)">${icon("trash-2")}<span class="button-label">Forget</span></button></div></header><div class="repo-summary"><div class="repo-graph-column">${repositoryRhythm(
+        status.history.filter((h) => h.repositoryId === r.id),
         inspectedStorage([r], info)[0]?.size,
-      )}<span class="pill">${status.unlocked.includes(r.id) ? "Session passphrase set" : "Passphrase not set"}</span></div>${data ? `<div class="repo-details"><div><small>ENCRYPTION</small><strong>${e(data.encryption?.mode || "Unknown")}</strong></div><div><small>STORED</small><strong>${bytes(data.cache?.stats?.unique_csize)}</strong></div><div><small>ORIGINAL SIZE</small><strong>${bytes(data.cache?.stats?.total_size)}</strong></div><div><small>ARCHIVES</small><strong>${e(data.archives?.length ?? "--")}</strong></div></div>` : ""}${last && last.exitCode > 1 ? `<div class="repository-error" role="status"><strong>Last operation failed</strong><p>${e(last.message)}</p>${last.message.includes("Repository passphrase is missing or incorrect") ? button("Set session passphrase", "unlock", "key-round", `data-id="${e(r.id)}" ${disabled()}`) : ""}<button class="text-button" data-route="activity">View activity ${icon("arrow-right")}</button></div>` : ""}<div class="repo-actions">${repositoryLockButton(r.id)}${button("Inspect", "info", "refresh-cw", `data-id="${e(r.id)}" title="Inspect this repository to load encryption and storage details." ${disabled()}`)}${(["overview", "profiles", "archives"] as RepositoryPanel[]).map((panel) => `<button class="button panel-toggle" data-action="repo-panel" data-id="${e(r.id)}" data-panel="${panel}" aria-expanded="${repositoryPanels.get(r.id) === panel}" aria-label="${panel === "overview" ? "Overview" : panel === "profiles" ? "Profiles" : "Archives"}" title="${panel === "overview" ? "Overview" : panel === "profiles" ? "Profiles" : "Archives"}" aria-controls="repository-panel-${e(r.id)}">${icon(panel === "overview" ? "layout-dashboard" : panel === "profiles" ? "folders" : "archive")}${panel === "overview" ? "Overview" : panel === "profiles" ? "Profiles" : "Archives"}</button>`).join("")}${button("Check", "check", "shield-check", `data-id="${e(r.id)}" ${disabled()}`)}${button("Initialize", "initialize", "plus", `data-id="${e(r.id)}" ${disabled()}`)}<button class="text-button danger push-right" data-action="forget-repo" data-id="${e(r.id)}" ${status.busy ? "disabled" : ""} aria-label="Forget repository" title="Forget repository (leave all archives on disk)">${icon("trash-2")}<span class="button-label">Forget</span></button></div><div data-unlock-host="${e(r.id)}"></div>${repositoryPanels.has(r.id) ? `<section class="repository-panel" id="repository-panel-${e(r.id)}" aria-label="${e(r.name)} ${repositoryPanels.get(r.id)}">${repositoryPanels.get(r.id) === "overview" ? repositoryOverview(r.id) : repositoryPanels.get(r.id) === "profiles" ? repositoryProfiles(r.id) : archiveView(r.id)}</section>` : ""}</article>`;
+      )}</div><div class="repo-side-column"><div class="repo-details" aria-label="Repository details"><div><small>ENCRYPTION</small><strong>${e(data?.encryption?.mode || "Not inspected")}</strong></div><div><small>STORED</small><strong>${bytes(data?.cache?.stats?.unique_csize)}</strong></div><div><small>ORIGINAL SIZE</small><strong>${bytes(data?.cache?.stats?.total_size)}</strong></div><div><small>ARCHIVES</small><strong>${e(archives[r.id]?.length ?? data?.archives?.length ?? "--")}</strong></div></div>${repositoryQuickProfiles(r.id)}</div></div>${last && last.exitCode > 1 ? `<div class="repository-error" role="status"><strong>Last operation failed</strong><p>${e(last.message)}</p>${last.message.includes("Repository passphrase is missing or incorrect") ? button("Set session passphrase", "unlock", "key-round", `data-id="${e(r.id)}" ${disabled()}`) : ""}<button class="text-button" data-route="activity">View activity ${icon("arrow-right")}</button></div>` : ""}<div data-unlock-host="${e(r.id)}"></div>${repositoryPanels.has(r.id) ? `<section class="repository-panel" id="repository-panel-${e(r.id)}" aria-label="${e(r.name)} ${repositoryPanels.get(r.id)}">${repositoryPanels.get(r.id) === "overview" ? repositoryOverview(r.id) : repositoryPanels.get(r.id) === "profiles" ? repositoryProfiles(r.id) : archiveView(r.id)}</section>` : ""}</article>`;
     })
     .join("");
+}
+let archiveMenu: HTMLElement | null = null;
+let archiveMenuRow: HTMLElement | null = null;
+function closeArchiveMenu(restoreFocus = false) {
+  archiveMenu?.remove();
+  archiveMenu = null;
+  if (restoreFocus) archiveMenuRow?.focus({ preventScroll: true });
+  archiveMenuRow = null;
+}
+function showArchiveMenu(row: HTMLElement, x: number, y: number) {
+  closeArchiveMenu();
+  archiveMenuRow = row;
+  const id = row.dataset.repository!,
+    name = row.dataset.archiveRow!;
+  const menu = document.createElement("div");
+  archiveMenu = menu;
+  menu.className = "archive-context-menu";
+  menu.setAttribute("role", "menu");
+  menu.setAttribute("aria-label", "Archive actions");
+  menu.innerHTML = '<button type="button" role="menuitem">View diff</button>';
+  document.body.append(menu);
+  menu.style.left = `${Math.max(8, Math.min(x, innerWidth - menu.offsetWidth - 8))}px`;
+  menu.style.top = `${Math.max(8, Math.min(y, innerHeight - menu.offsetHeight - 8))}px`;
+  const item = menu.querySelector<HTMLButtonElement>("button")!;
+  item.onclick = () => {
+    closeArchiveMenu();
+    void openArchiveDiff(id, name);
+  };
+  item.focus({ preventScroll: true });
+}
+interface ArchiveDiffEntry {
+  path: string;
+  changes: Array<Record<string, unknown>>;
+}
+let diffRepository = "",
+  diffSelected = "",
+  diffBase = "",
+  diffError = "";
+let diffLoading = false,
+  diffGeneration = 0,
+  diffVisible = 200;
+let diffEntries: ArchiveDiffEntry[] | null = null;
+const diffSupported = () =>
+  !status.workerRunning || status.archiveDiffSupported === true;
+async function openArchiveDiff(id: string, name: string) {
+  if (!repo(id)) return;
+  diffGeneration++;
+  diffRepository = id;
+  diffSelected = name;
+  diffError = "";
+  diffEntries = null;
+  diffLoading = false;
+  diffVisible = 200;
+  const list = (archives[id] ?? []).filter((a) => a.name !== name);
+  const selectedTime = Date.parse(
+    archives[id]?.find((a) => a.name === name)?.time ?? "",
+  );
+  const older = list
+    .filter((a) => Date.parse(a.time) < selectedTime)
+    .sort((a, b) => Date.parse(b.time) - Date.parse(a.time));
+  diffBase = (older[0] ?? list[0])?.name ?? "";
+  route = "archiveDiff";
+  render();
+  if (diffBase && diffSupported() && !status.busy && !status.workerOffline)
+    await loadArchiveDiff();
+}
+async function loadArchiveDiff() {
+  if (diffLoading || !diffBase || diffBase === diffSelected || !diffSupported())
+    return;
+  const generation = ++diffGeneration;
+  const id = diffRepository,
+    base = diffBase,
+    selected = diffSelected;
+  diffLoading = true;
+  diffError = "";
+  diffEntries = null;
+  diffVisible = 200;
+  render();
+  try {
+    const output = await operation("diff", id, {
+      archive: base,
+      compareArchive: selected,
+    });
+    if (
+      !Array.isArray(output.data) ||
+      !output.data.every(
+        (item: any) =>
+          typeof item?.path === "string" && Array.isArray(item.changes),
+      )
+    )
+      throw new Error("Invalid archive diff response");
+    if (generation === diffGeneration) diffEntries = output.data;
+  } catch (error) {
+    if (generation === diffGeneration) diffError = String(error);
+  } finally {
+    if (generation === diffGeneration) {
+      diffLoading = false;
+      render();
+    }
+  }
+}
+function archiveDiffView() {
+  const choices = (archives[diffRepository] ?? []).filter(
+    (a) => a.name !== diffSelected,
+  );
+  const changes = (entry: ArchiveDiffEntry) =>
+    entry.changes
+      .map((change) => {
+        const type = typeof change.type === "string" ? change.type : "changed";
+        const details = Object.entries(change)
+          .filter(([key]) => key !== "type")
+          .map(
+            ([key, value]) =>
+              `${key.replaceAll("_", " ")}: ${typeof value === "number" && ["added", "removed", "size"].includes(key) ? bytes(value) : JSON.stringify(value)}`,
+          )
+          .join(" · ");
+        return `<span class="diff-change" data-change="${e(type)}"><strong>${e(type.replaceAll("_", " "))}</strong>${details ? ` · ${e(details)}` : ""}</span>`;
+      })
+      .join("");
+  return `<section class="archive-diff" aria-label="Archive comparison"><p class="archive-diff-context"><strong>${e(repo(diffRepository)?.name)}</strong> · Selected archive: <code>${e(diffSelected)}</code></p><p class="muted">File-level Borg comparison: added, removed, changed files and metadata; not a line-by-line text patch. Direction: comparison archive → selected archive.</p><div class="archive-diff-controls"><label class="field">Compare with<select id="diff-base" ${diffLoading ? "disabled" : ""}>${choices.length ? choices.map((a) => `<option value="${e(a.name)}" ${a.name === diffBase ? "selected" : ""}>${e(a.name)}</option>`).join("") : '<option value="">No other archives available</option>'}</select></label>${button("Compare archives", "diff-run", "git-compare-arrows", `${disabled()} ${!diffBase || diffLoading || !diffSupported() ? "disabled" : ""}`)}</div>${
+    !choices.length
+      ? '<p role="status">At least two archives in this repository are needed for a diff.</p>'
+      : !diffSupported()
+        ? '<p class="notice" role="status">The running worker needs an update for archive diffs. In Settings, Stop and Start the worker, then unlock this repository again. Existing jobs will finish safely first.</p>'
+        : diffLoading
+          ? '<p role="status">Comparing archive contents…</p>'
+          : diffError
+            ? `<div class="repository-error" role="alert"><strong>Could not compare archives</strong><p>${e(diffError)}</p>${button("Retry comparison", "diff-run", "refresh-cw", disabled())}</div>`
+            : diffEntries === null
+              ? `<p role="status">${status.busy ? "Wait for the active operation to finish, then compare these archives." : "Choose a comparison archive, then Compare archives."}</p>`
+              : diffEntries.length === 0
+                ? '<p role="status">No differences found between these archives.</p>'
+                : `<div class="archive-diff-actions"><span>${diffEntries.length.toLocaleString()} changed paths · Showing ${Math.min(diffVisible, diffEntries.length).toLocaleString()}</span>${diffEntries.length > diffVisible ? button("Show more changes", "diff-more", "plus") : ""}</div><div class="table-wrap"><table class="archive-diff-table"><thead><tr><th>Path</th><th>Changes</th></tr></thead><tbody>${diffEntries
+                    .slice(0, diffVisible)
+                    .map(
+                      (entry) =>
+                        `<tr><td><code>${e(entry.path)}</code></td><td>${changes(entry)}</td></tr>`,
+                    )
+                    .join("")}</tbody></table></div>`
+  }</section>`;
 }
 function archiveView(id: string) {
   const {
@@ -433,7 +597,7 @@ function archiveView(id: string) {
   );
   const heading = (label: string, column: ArchiveColumn, title = "") =>
     `<th aria-sort="${archiveSort === column ? (archiveDirection === "asc" ? "ascending" : "descending") : "none"}"><button class="archive-sort" data-action="sort-archives" data-id="${e(id)}" data-column="${column}" title="${e(title || `Sort by ${label}`)}">${label}<span aria-hidden="true">${archiveSort === column ? (archiveDirection === "asc" ? "&#9650;" : "&#9660;") : "&#8597;"}</span></button></th>`;
-  return `<div class="archive-toolbar"><label class="search">${icon("search")}<input class="archive-search" data-repository="${e(id)}" placeholder="Find an archive..." value="${e(archiveFilter)}" aria-label="Filter archives"></label>${button("Refresh", "load-archives", "refresh-cw", `data-id="${e(id)}" ${loadState ? "disabled" : disabled()}`)}</div>${loadingMarkup}${list?.length ? `<div class="table-wrap archive-list"><table class="archive-table"><thead><tr>${heading("Archive", "name")}${heading("Created", "time", `Sort by creation time. Displayed in your local time zone (${Intl.DateTimeFormat().resolvedOptions().timeZone}).`)}${heading("Files backed up", "files")}${heading("Total size", "size", "Original archive size before compression and deduplication, as reported by Borg")}<th class="align-right">Actions</th></tr></thead><tbody>${filtered!.map((a) => `<tr><td><div class="archive-name">${icon("archive")}<code title="${e(a.name)}">${e(a.name)}</code></div></td><td class="nowrap">${e(Number.isFinite(Date.parse(a.time || a.start || "")) ? date(a.time || a.start) : "Unavailable")}</td><td class="nowrap">${typeof a.stats?.nfiles === "number" ? a.stats.nfiles.toLocaleString() : "Unavailable"}</td><td class="nowrap">${typeof a.stats?.original_size === "number" ? bytes(a.stats.original_size) : "Unavailable"}</td><td><div class="row-actions">${button("Browse", "files", "folder-search", `data-archive="${e(a.name)}" data-repository="${e(id)}" ${disabled()}`)}${button("Restore", "restore", "download", `data-archive="${e(a.name)}" data-repository="${e(id)}" ${disabled()}`)}</div></td></tr>`).join("") || '<tr><td colspan="5" class="table-empty">No matching archives.</td></tr>'}</tbody></table></div><p class="muted">${list.length} archives in this repository. Restores always go into an empty folder.</p>` : loadState || loadError ? "" : list ? empty("No archives yet", "This repository does not contain any archives. Create a backup using one of its profiles.") : `<p class="muted">Archives have not been loaded.</p>`}`;
+  return `<div class="archive-toolbar"><label class="search">${icon("search")}<input class="archive-search" data-repository="${e(id)}" placeholder="Find an archive..." value="${e(archiveFilter)}" aria-label="Filter archives"></label>${button("Refresh", "load-archives", "refresh-cw", `data-id="${e(id)}" ${loadState ? "disabled" : disabled()}`)}</div>${loadingMarkup}${list?.length ? `<div class="table-wrap archive-list"><table class="archive-table"><thead><tr>${heading("Archive", "name")}${heading("Created", "time", `Sort by creation time. Displayed in your local time zone (${Intl.DateTimeFormat().resolvedOptions().timeZone}).`)}${heading("Files backed up", "files")}${heading("Total size", "size", "Original archive size before compression and deduplication, as reported by Borg")}<th class="align-right">Actions</th></tr></thead><tbody>${filtered!.map((a) => `<tr tabindex="0" data-archive-row="${e(a.name)}" data-repository="${e(id)}"><td><div class="archive-name">${icon("archive")}<code title="${e(a.name)}">${e(a.name)}</code></div></td><td class="nowrap">${e(Number.isFinite(Date.parse(a.time || a.start || "")) ? date(a.time || a.start) : "Unavailable")}</td><td class="nowrap">${typeof a.stats?.nfiles === "number" ? a.stats.nfiles.toLocaleString() : "Unavailable"}</td><td class="nowrap">${typeof a.stats?.original_size === "number" ? bytes(a.stats.original_size) : "Unavailable"}</td><td><div class="row-actions">${button("Browse", "files", "folder-search", `data-archive="${e(a.name)}" data-repository="${e(id)}" ${disabled()}`)}${button("Restore", "restore", "download", `data-archive="${e(a.name)}" data-repository="${e(id)}" ${disabled()}`)}</div></td></tr>`).join("") || '<tr><td colspan="5" class="table-empty">No matching archives.</td></tr>'}</tbody></table></div><p class="muted">${list.length} archives in this repository. Restores always go into an empty folder.</p>` : loadState || loadError ? "" : list ? empty("No archives yet", "This repository does not contain any archives. Create a backup using one of its profiles.") : `<p class="muted">Archives have not been loaded.</p>`}`;
 }
 function activity() {
   return `<section class="activity-workspace" aria-label="Operation activity"><div id="check-progress" aria-live="polite">${checkProgressMarkup()}</div><div class="activity-section-heading"><h2>Operation log</h2><span class="pill ${status.busy ? "success" : ""}" id="activity-state">${status.busy ? "Running" : "Idle"}</span></div><div class="activity-log-panel"><button class="copy-button copy-log" data-action="copy-log" aria-label="Copy operation log" title="Copy operation log" ${status.logs.length ? "" : "disabled"}>${icon("copy")}</button><pre class="terminal" id="terminal" tabindex="0" aria-label="Borg operation output">${e(status.logs.join("\n") || "No operations in this session.\nYour Borg output will appear here as it happens.")}</pre></div><div class="activity-section-heading"><h2>Recent activity</h2><span class="muted">Last 200 operations</span></div>${status.history.length ? `<div class="table-wrap activity-history" tabindex="0" role="region" aria-label="Recent activity history"><table><thead><tr><th>Operation</th><th>Repository</th><th>Time</th><th>Result</th><th class="copy-column"><span class="sr-only">Copy details</span></th></tr></thead><tbody>${status.history.map((h) => `<tr><td class="capitalize">${e(h.action)}</td><td>${e(h.repositoryName ?? repo(h.repositoryId)?.name ?? "Forgotten repository")}</td><td>${e(date(h.time))}</td><td><span title="${e(h.message)}" class="pill ${h.exitCode === 0 ? "success" : h.exitCode === 1 ? "warning" : "failure"}">${h.exitCode === 0 ? "Completed" : h.exitCode === 1 ? "Warning" : "Failed"}</span></td><td class="copy-column"><button class="copy-button" data-action="copy-history" data-id="${e(h.id ?? "")}" data-time="${e(h.time)}" data-operation="${e(h.action)}" data-repository="${e(h.repositoryId)}" aria-label="Copy details for ${e(h.action)} at ${e(date(h.time))}" title="Copy full operation details">${icon("copy")}</button></td></tr>`).join("")}</tbody></table></div>` : `<div class="activity-empty">${empty("A clean slate", "Backup results, checks, and restores will be recorded here.")}</div>`}</section>`;
@@ -1240,6 +1404,19 @@ async function handleAction(action: string, element: HTMLElement) {
     case "load-archives":
       await loadRepositoryArchives(id);
       break;
+    case "diff-run":
+      await loadArchiveDiff();
+      break;
+    case "diff-more":
+      diffVisible += 200;
+      render();
+      break;
+    case "diff-back":
+      repositoryId = diffRepository;
+      repositoryPanels.set(diffRepository, "archives");
+      route = "repositories";
+      render();
+      break;
     case "archive-back":
       repositoryId = fileRepositoryId;
       repositoryPanels.set(fileRepositoryId, "archives");
@@ -1360,8 +1537,48 @@ document.addEventListener("click", (event) => {
       notify(String(err), true),
     );
 });
+document.addEventListener("contextmenu", (event) => {
+  const row = (event.target as HTMLElement).closest<HTMLElement>(
+    ".archive-table tbody tr[data-archive-row]",
+  );
+  if (!row) return;
+  event.preventDefault();
+  showArchiveMenu(row, event.clientX, event.clientY);
+});
+document.addEventListener("keydown", (event) => {
+  if (archiveMenu && event.key === "Escape") {
+    event.preventDefault();
+    closeArchiveMenu(true);
+    return;
+  }
+  const row = (event.target as HTMLElement).closest<HTMLElement>(
+    ".archive-table tbody tr[data-archive-row]",
+  );
+  if (
+    row &&
+    (event.key === "ContextMenu" || (event.shiftKey && event.key === "F10"))
+  ) {
+    event.preventDefault();
+    const rect = row.getBoundingClientRect();
+    showArchiveMenu(row, rect.left + 24, rect.top + 20);
+  }
+});
+document.addEventListener("pointerdown", (event) => {
+  if (archiveMenu && !archiveMenu.contains(event.target as Node))
+    closeArchiveMenu();
+});
+window.addEventListener("resize", () => closeArchiveMenu());
+window.addEventListener("wheel", () => closeArchiveMenu(), { passive: true });
 document.addEventListener("change", (event) => {
   const target = event.target as HTMLSelectElement;
+  if (target.id === "diff-base") {
+    diffBase = target.value;
+    diffGeneration++;
+    diffEntries = null;
+    diffError = "";
+    diffLoading = false;
+    render();
+  }
   if (target.id === "icon-buttons")
     setIconButtons((event.target as HTMLInputElement).checked);
   if (target.id === "appearance-family" || target.id === "appearance-size") {
@@ -1408,13 +1625,14 @@ async function start() {
     try {
       const previousBusy = status.busy;
       const previousUnlocks = JSON.stringify(status.unlocked);
-      const previousWorker = `${status.workerRunning}:${status.workerOffline}`;
+      const previousWorker = `${status.workerRunning}:${status.workerOffline}:${status.archiveDiffSupported}`;
       const previousHistory =
         route === "repositories" ? overviewHistoryKey() : "";
       await refreshStatus();
       if (
         previousBusy !== status.busy ||
-        previousWorker !== `${status.workerRunning}:${status.workerOffline}` ||
+        previousWorker !==
+          `${status.workerRunning}:${status.workerOffline}:${status.archiveDiffSupported}` ||
         previousUnlocks !== JSON.stringify(status.unlocked) ||
         (route === "repositories" &&
           (previousHistory !== overviewHistoryKey() ||

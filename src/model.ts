@@ -114,6 +114,7 @@ export interface Relocation {
 export interface Status {
   workerRunning?: boolean;
   workerOffline?: boolean;
+  archiveDiffSupported?: boolean;
   busy: boolean;
   action: string;
   logs: string[];

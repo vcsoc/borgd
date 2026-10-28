@@ -113,6 +113,7 @@ fn dispatch(
             let mut value = serde_json::to_value(&*backend.status.lock().unwrap())
                 .map_err(|e| e.to_string())?;
             value["workerRunning"] = json!(background);
+            value["archiveDiffSupported"] = json!(true);
             value
         }
         "get_history_details" => serde_json::to_value(backend.history_details(&string("id")?)?)
@@ -439,6 +440,7 @@ mod platform {
                                 encrypted: None,
                                 dry_run: None,
                                 selected_paths: None,
+                                compare_archive: None,
                             });
                         }
                     }

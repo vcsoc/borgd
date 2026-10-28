@@ -150,3 +150,22 @@ test("invalid imports leave the active theme untouched and mobile studio stays w
     fullPage: true,
   });
 });
+
+test("preview context menu copies both template variants into editable Custom and supports keyboard dismissal", async ({ page }) => {
+  await studio(page);
+  const forest = page.getByRole("radio", { name: "Forest", exact: true });
+  await forest.click({ button: "right" });
+  await expect(page.getByRole("menu", { name: "Theme actions" })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(forest).toBeFocused();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "midnight");
+  await forest.press("Shift+F10");
+  await page.getByRole("menuitem", { name: "Update Custom", exact: true }).click();
+  await expect(page.getByRole("radio", { name: "Custom", exact: true })).toHaveAttribute("aria-checked", "true");
+  await expect(page.getByLabel("Repository header", { exact: true })).toHaveValue("#2a4536");
+  await page.getByRole("button", { name: "Light", exact: true }).click();
+  await expect(page.getByLabel("Repository header", { exact: true })).toHaveValue("#d3e5c9");
+  await page.getByLabel("Repository header", { exact: true }).fill("#abcdef");
+  await forest.click();
+  expect(await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--header").trim())).toBe("#d3e5c9");
+});

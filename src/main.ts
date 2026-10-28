@@ -140,6 +140,7 @@ import {
   applyTheme,
   themeStudioView,
   selectTheme,
+  updateCustomFromTheme,
   setThemeMode,
   setCustomColor,
   setCustomLayout,
@@ -484,6 +485,37 @@ function closeArchiveMenu(restoreFocus = false) {
   archiveMenu = null;
   if (restoreFocus) archiveMenuRow?.focus({ preventScroll: true });
   archiveMenuRow = null;
+}
+function showThemeMenu(preview: HTMLElement, x: number, y: number) {
+  closeArchiveMenu();
+  archiveMenuRow = preview;
+  const id = preview.dataset.theme ?? "";
+  const menu = document.createElement("div");
+  archiveMenu = menu;
+  menu.className = "archive-context-menu";
+  menu.setAttribute("role", "menu");
+  menu.setAttribute("aria-label", "Theme actions");
+  const item = document.createElement("button");
+  item.type = "button";
+  item.setAttribute("role", "menuitem");
+  item.textContent = "Update Custom";
+  item.onclick = () => {
+    closeArchiveMenu();
+    try {
+      updateCustomFromTheme(id);
+      redrawThemeStudio('.theme-preview[data-theme="custom"]');
+      notify(
+        "Custom updated from the selected template, including both layouts.",
+      );
+    } catch (error) {
+      notify(String(error), true);
+    }
+  };
+  menu.append(item);
+  document.body.append(menu);
+  menu.style.left = `${Math.max(8, Math.min(x, innerWidth - menu.offsetWidth - 8))}px`;
+  menu.style.top = `${Math.max(8, Math.min(y, innerHeight - menu.offsetHeight - 8))}px`;
+  item.focus({ preventScroll: true });
 }
 function showArchiveMenu(row: HTMLElement, x: number, y: number) {
   closeArchiveMenu();
@@ -1713,6 +1745,14 @@ document.addEventListener("click", (event) => {
     );
 });
 document.addEventListener("contextmenu", (event) => {
+  const preview = (event.target as HTMLElement).closest<HTMLElement>(
+    ".theme-preview",
+  );
+  if (preview) {
+    event.preventDefault();
+    showThemeMenu(preview, event.clientX, event.clientY);
+    return;
+  }
   const row = (event.target as HTMLElement).closest<HTMLElement>(
     ".archive-table tbody tr[data-archive-row], .archive-diff-table tr[data-diff-index]",
   );
@@ -1725,6 +1765,15 @@ document.addEventListener("keydown", (event) => {
     event.target instanceof Element
       ? event.target.closest<HTMLElement>(".theme-preview")
       : null;
+  if (
+    preview &&
+    (event.key === "ContextMenu" || (event.shiftKey && event.key === "F10"))
+  ) {
+    event.preventDefault();
+    const rect = preview.getBoundingClientRect();
+    showThemeMenu(preview, rect.left + 24, rect.top + 20);
+    return;
+  }
   if (
     preview &&
     ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End"].includes(

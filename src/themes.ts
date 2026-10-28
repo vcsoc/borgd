@@ -476,6 +476,20 @@ export function selectTheme(id: string) {
   if (!Object.hasOwn(themeNames, id)) return;
   commit({ ...themeState(), theme: id as ThemeId });
 }
+export function updateCustomFromTheme(id: string) {
+  if (!Object.hasOwn(themeNames, id)) return;
+  const state = themeState();
+  commit({
+    ...state,
+    theme: "custom",
+    custom: {
+      dark: palette(id as ThemeId, "dark", state),
+      light: palette(id as ThemeId, "light", state),
+    },
+    radius: id === "custom" ? state.radius : 4,
+    density: id === "custom" ? state.density : "compact",
+  });
+}
 export function setThemeMode(mode: string) {
   if (mode === "dark" || mode === "light") commit({ ...themeState(), mode });
 }

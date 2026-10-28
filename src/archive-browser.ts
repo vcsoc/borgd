@@ -76,6 +76,28 @@ export class ArchiveBrowser {
     this.selected = "";
     this.selection.clear();
   }
+  reveal(path: string): boolean {
+    const normalized = path
+      .split("/")
+      .filter((part) => part && part !== ".")
+      .join("/");
+    const item = this.index.items.get(normalized);
+    if (!item || !item.path) return false;
+    this.folder = item.parent;
+    this.query = "";
+    this.selected = item.path;
+    this.selection = new Set([item.path]);
+    let parent = item.parent;
+    while (parent) {
+      this.expanded.add(parent);
+      parent = this.index.items.get(parent)?.parent ?? "";
+    }
+    const position = this.index
+      .list(item.parent)
+      .findIndex((entry) => entry.path === item.path);
+    this.limit = Math.max(200, Math.ceil((position + 1) / 200) * 200);
+    return true;
+  }
   private tree(path: string, depth: number): string {
     const item = this.index.items.get(path)!;
     const dirs = (this.index.children.get(path) ?? []).filter(

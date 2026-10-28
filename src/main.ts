@@ -39,6 +39,10 @@ import {
   RefreshCw,
   Scissors,
   GitCompareArrows,
+  Palette,
+  Moon,
+  Sun,
+  Upload,
   Square,
   Search,
   Settings2,
@@ -84,6 +88,10 @@ const icons = {
   RefreshCw,
   Scissors,
   GitCompareArrows,
+  Palette,
+  Moon,
+  Sun,
+  Upload,
   Square,
   Search,
   Settings2,
@@ -125,6 +133,18 @@ import "./flat.css";
 import "./repository-workspace.css";
 import "./compact.css";
 import "./repository-redesign.css";
+import "./themes.css";
+import {
+  applyTheme,
+  themeStudioView,
+  selectTheme,
+  setThemeMode,
+  setCustomColor,
+  setCustomLayout,
+  exportTheme,
+  importTheme,
+} from "./themes";
+applyTheme();
 import licenseText from "../LICENSE?raw";
 import {
   decorateButtons,
@@ -311,7 +331,7 @@ function render() {
     )
     .join(
       "",
-    )}</nav></aside><main><header class="toolbar"><button class="top-brand" data-route="about" aria-label="About borgd" title="About borgd"><strong>borgd</strong><span class="version">0.1</span><span class="brand-tagline">BACKUP COMPANION</span></button><div class="top-tools"><div class="engine-status" role="status" title="${e(status.busy ? `${version} · Operation in progress` : version)}"><span class="dot ${status.busy ? "amber pulse" : available ? "green" : "amber"}"></span><span>${e(version)}</span>${status.busy ? '<span id="running-label">Working</span>' : ""}</div>${topIcon("Terminal", "terminal", `data-action="toggle-terminal" aria-expanded="${terminalDock.visible}"`)}${topIcon("Settings & help", "settings-2", 'data-route="settings"')}</div></header><div class="content ${route === "activity" || route === "archiveFiles" ? "activity-content" : ""}"><div class="page-heading"><div><div class="eyebrow">YOUR BACKUP WORKSPACE</div><h1>${pages[route][0]}</h1><p>${pages[route][1]}</p></div>${route === "archiveDiff" ? button("Back to archives", "diff-back", "arrow-left") : route === "archiveFiles" ? button("Back to archives", "archive-back", "arrow-left") : route === "repositories" ? button("Add repository", "add-repo", "plus", status.busy ? "disabled" : "", true) : ""}</div>${initialized && !available && isFreshInstallation(config, status.history) ? `<div class="notice">${icon("info")}<div><strong>${isTauri() ? "Borg needs a little setup" : "Desktop preview"}</strong><p>${isTauri() ? e(error || "Looking for Borg 1.x on this computer.") : "This is the browser preview. Run the Tauri desktop app to connect repositories and execute real backups."}</p></div>${button("Setup guide", "setup", "arrow-up-right")}</div>` : ""}<div id="view">${view()}</div></div><footer><span>${icon("lock-keyhole")} Passphrases stay in memory, never on disk.</span><span id="footer-status">${status.busy ? (status.workerRunning ? "Backup worker is running. You may close this window." : "Keep borgd open until this operation finishes.") : status.workerRunning ? "Background backup worker connected" : status.workerOffline ? "Background worker stopped — Start it in Settings" : "Powered by Borg Backup"}</span></footer></main></div>`;
+    )}</nav></aside><main><header class="toolbar"><button class="top-brand" data-route="about" aria-label="About borgd" title="About borgd"><strong>borgd</strong><span class="version">0.1</span><span class="brand-tagline">BACKUP COMPANION</span></button><div class="top-tools"><div class="engine-status" role="status" title="${e(status.busy ? `${version} · Operation in progress` : version)}"><span class="dot ${status.busy ? "amber pulse" : available ? "green" : "amber"}"></span><span>${e(version)}</span>${status.busy ? '<span id="running-label">Working</span>' : ""}</div>${topIcon("Theme Studio", "palette", 'data-action="theme-studio"')}${topIcon("Terminal", "terminal", `data-action="toggle-terminal" aria-expanded="${terminalDock.visible}"`)}${topIcon("Settings & help", "settings-2", 'data-route="settings"')}</div></header><div class="content ${route === "activity" || route === "archiveFiles" ? "activity-content" : ""}"><div class="page-heading"><div><div class="eyebrow">YOUR BACKUP WORKSPACE</div><h1>${pages[route][0]}</h1><p>${pages[route][1]}</p></div>${route === "archiveDiff" ? button("Back to archives", "diff-back", "arrow-left") : route === "archiveFiles" ? button("Back to archives", "archive-back", "arrow-left") : route === "repositories" ? button("Add repository", "add-repo", "plus", status.busy ? "disabled" : "", true) : ""}</div>${initialized && !available && isFreshInstallation(config, status.history) ? `<div class="notice">${icon("info")}<div><strong>${isTauri() ? "Borg needs a little setup" : "Desktop preview"}</strong><p>${isTauri() ? e(error || "Looking for Borg 1.x on this computer.") : "This is the browser preview. Run the Tauri desktop app to connect repositories and execute real backups."}</p></div>${button("Setup guide", "setup", "arrow-up-right")}</div>` : ""}<div id="view">${view()}</div></div><footer><span>${icon("lock-keyhole")} Passphrases stay in memory, never on disk.</span><span id="footer-status">${status.busy ? (status.workerRunning ? "Backup worker is running. You may close this window." : "Keep borgd open until this operation finishes.") : status.workerRunning ? "Background backup worker connected" : status.workerOffline ? "Background worker stopped — Start it in Settings" : "Powered by Borg Backup"}</span></footer></main></div>`;
   if (route === "archiveFiles" && !archiveLoading && !archiveError) {
     const browserRoot = app.querySelector<HTMLElement>("#archive-browser-root");
     if (browserRoot)
@@ -440,23 +460,44 @@ function closeArchiveMenu(restoreFocus = false) {
 function showArchiveMenu(row: HTMLElement, x: number, y: number) {
   closeArchiveMenu();
   archiveMenuRow = row;
-  const id = row.dataset.repository!,
-    name = row.dataset.archiveRow!;
+  const id = row.dataset.repository ?? diffRepository,
+    name = row.dataset.archiveRow ?? diffSelected;
   const menu = document.createElement("div");
   archiveMenu = menu;
   menu.className = "archive-context-menu";
   menu.setAttribute("role", "menu");
   menu.setAttribute("aria-label", "Archive actions");
-  menu.innerHTML = '<button type="button" role="menuitem">View diff</button>';
+  const diffIndex = row.dataset.diffIndex;
+  const entry =
+    diffIndex === undefined ? undefined : diffEntries?.[Number(diffIndex)];
+  const actions = entry ? ["Go to"] : ["Browse", "Restore", "View diff"];
+  menu.setAttribute(
+    "aria-label",
+    entry ? "Diff item actions" : "Archive actions",
+  );
+  for (const label of actions) {
+    const item = document.createElement("button");
+    item.type = "button";
+    item.role = "menuitem";
+    item.textContent = label;
+    item.disabled =
+      label !== "View diff" && (status.busy || !!status.workerOffline);
+    item.dataset.repository = id;
+    item.dataset.archive = name;
+    item.onclick = () => {
+      closeArchiveMenu();
+      if (entry) void goToDiffItem(entry);
+      else if (label === "View diff") void openArchiveDiff(id, name);
+      else void handleAction(label === "Browse" ? "files" : "restore", item);
+    };
+    menu.append(item);
+  }
   document.body.append(menu);
   menu.style.left = `${Math.max(8, Math.min(x, innerWidth - menu.offsetWidth - 8))}px`;
   menu.style.top = `${Math.max(8, Math.min(y, innerHeight - menu.offsetHeight - 8))}px`;
-  const item = menu.querySelector<HTMLButtonElement>("button")!;
-  item.onclick = () => {
-    closeArchiveMenu();
-    void openArchiveDiff(id, name);
-  };
-  item.focus({ preventScroll: true });
+  menu
+    .querySelector<HTMLButtonElement>("button:not(:disabled)")
+    ?.focus({ preventScroll: true });
 }
 interface ArchiveDiffEntry {
   path: string;
@@ -529,6 +570,46 @@ async function loadArchiveDiff() {
     }
   }
 }
+async function goToDiffItem(entry: ArchiveDiffEntry) {
+  const id = diffRepository;
+  const removed =
+    entry.changes.some((change) => String(change.type).startsWith("removed")) &&
+    !entry.changes.some((change) => String(change.type).startsWith("added"));
+  const candidates = removed
+    ? [diffBase, diffSelected]
+    : [diffSelected, diffBase];
+  for (const archive of candidates) {
+    const element = document.createElement("button");
+    element.dataset.repository = id;
+    element.dataset.archive = archive;
+    await handleAction("files", element);
+    if (
+      route !== "archiveFiles" ||
+      fileRepositoryId !== id ||
+      fileArchive !== archive ||
+      archiveError
+    )
+      return;
+    if (archiveBrowser.reveal(entry.path)) {
+      render();
+      const selected = document.querySelector<HTMLElement>(
+        ".archive-content-pane [aria-selected=true]",
+      );
+      selected?.scrollIntoView({ block: "nearest" });
+      selected
+        ?.querySelector<HTMLButtonElement>("button")
+        ?.focus({ preventScroll: true });
+      notify(
+        `Selected ${entry.path} in ${archive}. Restore it using Restore selected.`,
+      );
+      return;
+    }
+  }
+  notify(
+    "This path is not available in either compared archive. No items were selected or restored.",
+    true,
+  );
+}
 function archiveDiffView() {
   const choices = (archives[diffRepository] ?? []).filter(
     (a) => a.name !== diffSelected,
@@ -563,8 +644,8 @@ function archiveDiffView() {
                 : `<div class="archive-diff-actions"><span>${diffEntries.length.toLocaleString()} changed paths · Showing ${Math.min(diffVisible, diffEntries.length).toLocaleString()}</span>${diffEntries.length > diffVisible ? button("Show more changes", "diff-more", "plus") : ""}</div><div class="table-wrap"><table class="archive-diff-table"><thead><tr><th>Path</th><th>Changes</th></tr></thead><tbody>${diffEntries
                     .slice(0, diffVisible)
                     .map(
-                      (entry) =>
-                        `<tr><td><code>${e(entry.path)}</code></td><td>${changes(entry)}</td></tr>`,
+                      (entry, index) =>
+                        `<tr tabindex="0" data-diff-index="${index}" title="Right-click for Go to"><td><code>${e(entry.path)}</code></td><td>${changes(entry)}</td></tr>`,
                     )
                     .join("")}</tbody></table></div>`
   }</section>`;
@@ -661,8 +742,16 @@ function workerServiceSettings() {
   const attrs = (condition = false) => (blocked || condition ? "disabled" : "");
   return `<section class="settings-card worker-service-settings" aria-label="Background backups"><h2>${icon("clock-3")} Background backups <span class="pill ${status.workerRunning && !status.workerOffline ? "success" : ""}">${workerServicePending === "stop" || workerServicePending === "uninstall" || data?.stopping ? "Stopping" : status.workerRunning && !status.workerOffline ? "Worker connected" : "Worker stopped"}</span></h2><div class="worker-service-actions">${button("Register worker startup", "service-register", "plus", attrs())}${button("Start worker", "service-start", "play", attrs(!!status.workerRunning && !status.workerOffline))}${button("Stop worker", "service-stop", "square", attrs(!status.workerRunning || !!status.workerOffline))}${button("Uninstall worker startup", "service-uninstall", "trash-2", attrs(!data?.registered))}${button("Refresh worker status", "service-refresh", "refresh-cw", !isTauri() || workerServicePending ? "disabled" : "")}</div>${workerServicePending ? `<p role="status">${workerServicePending === "stop" || workerServicePending === "uninstall" ? "Stopping safely: waiting for accepted Borg operations to finish. No process is force-killed." : "Updating worker startup…"}</p>` : ""}${workerServiceError ? `<p class="form-error" role="status">${e(workerServiceError)}</p>` : ""}<p>${data ? `${e(data.manager)}. ${data.registered ? "Startup registered." : "Startup not registered."} <code>${e(data.definition)}</code>` : isTauri() ? "Checking this platform's background worker support…" : "Worker management is available in the desktop application."}</p>${data?.conflict ? '<p class="form-error">An existing startup definition belongs to another configuration. It will not be overwritten or removed.</p>' : ""}<p>Register enables startup at user login; it does not restart the current worker. Start also works without registration. Stop pauses background backups until you explicitly Start again, waits for active work, and clears memory-only passphrases. Uninstall removes only worker startup, not your repositories, profiles, or archives.</p><p>Set a profile interval to opt in; 0 means manual only. Encrypted repositories need unlocking after a worker restart or reboot. Computers cannot back up while powered off or suspended; overdue schedules run once on resume. Linux without systemd uses desktop-login autostart, not a boot service. Systemd boot/logout operation still requires user lingering configured separately.</p></section>`;
 }
+function redrawThemeStudio(focus?: string) {
+  const top = app.querySelector(".content")?.scrollTop ?? 0;
+  render();
+  const content = app.querySelector(".content");
+  if (content) content.scrollTop = top;
+  if (focus)
+    app.querySelector<HTMLElement>(focus)?.focus({ preventScroll: true });
+}
 function settings() {
-  return `${appearanceView()}<section class="settings-card"><h2>Button labels</h2><label class="button-mode-control"><span>Icon-only action buttons</span><input id="icon-buttons" role="switch" type="checkbox" ${iconButtons() ? "checked" : ""}><span class="toggle-track" aria-hidden="true"></span></label><p>Enabled by default. Turn off to show icons with text. Actions retain accessible labels and tooltips in either mode.</p><p>Zoom the application with Ctrl+ / Ctrl- (Cmd on macOS); Ctrl+0 resets to 100%.</p></section>${workerServiceSettings()}<section class="settings-card"><h2>${icon("terminal")} Borg engine</h2><p>borgd uses <strong>Borg Backup 1.x</strong> installed on your computer. Borg 2 repositories are not supported. Borg is not bundled inside the AppImage.</p><div class="engine-detail"><code>${e(version)}</code>${button("Check again", "probe", "refresh-cw")}${!available && isTauri() ? button("Install Borg Backup", "install-borg", "download") : ""}</div>${error ? `<p class="form-error" role="alert">${e(error)}</p>` : ""}<h3>Linux</h3><p>Install Borg using your distribution's package manager, then launch the borgd AppImage.</p><code class="code-block">sudo apt install borgbackup &nbsp; # Debian / Ubuntu<br>sudo pacman -S borg &nbsp; &nbsp; &nbsp; # Arch Linux</code><h3>macOS</h3><code class="code-block">brew install borgbackup</code><p>borgd also checks the standard Apple Silicon and Intel Homebrew locations when launched from Finder.</p><h3>Windows</h3><p>Install WSL and Borg inside your default Linux distribution. borgd invokes <code>wsl.exe --exec borg</code>. Use Linux paths such as <code>/mnt/c/Users/you/Documents</code> for sources and destinations. SSH keys and known hosts belong inside WSL.</p><code class="code-block">wsl --install<br>wsl -- sudo apt install borgbackup</code></section><section class="settings-card"><h2>${icon("shield-check")} Security, without surprises</h2><p>Repository passphrases are kept only for this session and passed to Borg through its environment, never command-line arguments or saved settings. ${status.workerRunning ? "Passphrases remain only in background-worker memory when this window closes. Use Lock to clear them; a worker restart or reboot forgets them." : "Unlock each encrypted repository again after restarting."}</p><p>Before using an SSH repository, connect once in your terminal to verify the server's host key and configure key-based authentication. borgd does not answer interactive SSH prompts.</p><p>Back up your repository key separately using <code>borg key export REPOSITORY keyfile</code>. Losing the key or passphrase can make encrypted backups unrecoverable.</p><p>Retention only affects archives created by the selected profile. Preview pruning first. No automatic prune, compact, archive deletion, or destructive repair is performed.</p></section><section class="settings-card"><h2>${icon("info")} About borgd</h2><p>Version 0.1.0 · Rust + Tauri · Developed by Chris Visser.</p><p>${status.workerRunning ? "The background worker owns all Borg operations and schedules. This window can close during backups. Registered startup runs at user login. Linux systemd additionally supports logout/boot operation when user lingering is separately enabled. Powered-off or suspended computers cannot run backups; overdue schedules run once on resume." : "Start the background worker above to run scheduled backups. Stopped workers do not execute schedules."} Borg operations are serialized; no parallel backups or force-unlocking.</p></section>`;
+  return `${themeStudioView()}${appearanceView()}<section class="settings-card"><h2>Button labels</h2><label class="button-mode-control"><span>Icon-only action buttons</span><input id="icon-buttons" role="switch" type="checkbox" ${iconButtons() ? "checked" : ""}><span class="toggle-track" aria-hidden="true"></span></label><p>Enabled by default. Turn off to show icons with text. Actions retain accessible labels and tooltips in either mode.</p><p>Zoom the application with Ctrl+ / Ctrl- (Cmd on macOS); Ctrl+0 resets to 100%.</p></section>${workerServiceSettings()}<section class="settings-card"><h2>${icon("terminal")} Borg engine</h2><p>borgd uses <strong>Borg Backup 1.x</strong> installed on your computer. Borg 2 repositories are not supported. Borg is not bundled inside the AppImage.</p><div class="engine-detail"><code>${e(version)}</code>${button("Check again", "probe", "refresh-cw")}${!available && isTauri() ? button("Install Borg Backup", "install-borg", "download") : ""}</div>${error ? `<p class="form-error" role="alert">${e(error)}</p>` : ""}<h3>Linux</h3><p>Install Borg using your distribution's package manager, then launch the borgd AppImage.</p><code class="code-block">sudo apt install borgbackup &nbsp; # Debian / Ubuntu<br>sudo pacman -S borg &nbsp; &nbsp; &nbsp; # Arch Linux</code><h3>macOS</h3><code class="code-block">brew install borgbackup</code><p>borgd also checks the standard Apple Silicon and Intel Homebrew locations when launched from Finder.</p><h3>Windows</h3><p>Install WSL and Borg inside your default Linux distribution. borgd invokes <code>wsl.exe --exec borg</code>. Use Linux paths such as <code>/mnt/c/Users/you/Documents</code> for sources and destinations. SSH keys and known hosts belong inside WSL.</p><code class="code-block">wsl --install<br>wsl -- sudo apt install borgbackup</code></section><section class="settings-card"><h2>${icon("shield-check")} Security, without surprises</h2><p>Repository passphrases are kept only for this session and passed to Borg through its environment, never command-line arguments or saved settings. ${status.workerRunning ? "Passphrases remain only in background-worker memory when this window closes. Use Lock to clear them; a worker restart or reboot forgets them." : "Unlock each encrypted repository again after restarting."}</p><p>Before using an SSH repository, connect once in your terminal to verify the server's host key and configure key-based authentication. borgd does not answer interactive SSH prompts.</p><p>Back up your repository key separately using <code>borg key export REPOSITORY keyfile</code>. Losing the key or passphrase can make encrypted backups unrecoverable.</p><p>Retention only affects archives created by the selected profile. Preview pruning first. No automatic prune, compact, archive deletion, or destructive repair is performed.</p></section><section class="settings-card"><h2>${icon("info")} About borgd</h2><p>Version 0.1.0 · Rust + Tauri · Developed by Chris Visser.</p><p>${status.workerRunning ? "The background worker owns all Borg operations and schedules. This window can close during backups. Registered startup runs at user login. Linux systemd additionally supports logout/boot operation when user lingering is separately enabled. Powered-off or suspended computers cannot run backups; overdue schedules run once on resume." : "Start the background worker above to run scheduled backups. Stopped workers do not execute schedules."} Borg operations are serialized; no parallel backups or force-unlocking.</p></section>`;
 }
 
 function modal(
@@ -715,7 +804,7 @@ const field = (
   type = "text",
   required = true,
 ) =>
-  `<label class="field">${label}<input name="${name}" type="${type}" value="${e(value)}" placeholder="${e(placeholder)}" ${required ? "required" : ""}></label>`;
+  `<label class="field">${label}<input name="${name}" type="${type === "number" ? "text" : type}" ${type === "number" ? 'inputmode="numeric" pattern="[0-9]+"' : ""} value="${e(value)}" placeholder="${e(placeholder)}" ${required ? "required" : ""}></label>`;
 const value = (form: HTMLFormElement, name: string) =>
   String(new FormData(form).get(name) ?? "").trim();
 async function save(next: Config) {
@@ -1447,6 +1536,50 @@ async function handleAction(action: string, element: HTMLElement) {
     case "install-borg":
       await offerBorgInstall();
       break;
+    case "theme-studio":
+      route = "settings";
+      render();
+      document
+        .querySelector("#theme-studio")
+        ?.scrollIntoView({ block: "start" });
+      void refreshWorkerService();
+      break;
+    case "theme-select":
+      selectTheme(element.dataset.theme ?? "");
+      redrawThemeStudio(
+        `.theme-preview[data-theme="${CSS.escape(element.dataset.theme ?? "")}"]`,
+      );
+      break;
+    case "theme-mode":
+      setThemeMode(element.dataset.mode ?? "");
+      redrawThemeStudio(
+        `.theme-mode[data-mode="${CSS.escape(element.dataset.mode ?? "")}"]`,
+      );
+      break;
+    case "theme-import":
+      document.querySelector<HTMLInputElement>("#theme-import-file")?.click();
+      break;
+    case "theme-export": {
+      try {
+        const document = exportTheme();
+        if (isTauri()) {
+          if (await invoke<boolean>("export_theme", { document }))
+            notify("Theme exported.");
+        } else {
+          const url = URL.createObjectURL(
+            new Blob([document], { type: "application/json" }),
+          );
+          const link = window.document.createElement("a");
+          link.href = url;
+          link.download = "borgd-theme.json";
+          link.click();
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+        }
+      } catch (error) {
+        notify(String(error), true);
+      }
+      break;
+    }
     case "appearance-reset":
       saveAppearance("mono", 14);
       render();
@@ -1539,20 +1672,71 @@ document.addEventListener("click", (event) => {
 });
 document.addEventListener("contextmenu", (event) => {
   const row = (event.target as HTMLElement).closest<HTMLElement>(
-    ".archive-table tbody tr[data-archive-row]",
+    ".archive-table tbody tr[data-archive-row], .archive-diff-table tr[data-diff-index]",
   );
   if (!row) return;
   event.preventDefault();
   showArchiveMenu(row, event.clientX, event.clientY);
 });
 document.addEventListener("keydown", (event) => {
+  const preview =
+    event.target instanceof Element
+      ? event.target.closest<HTMLElement>(".theme-preview")
+      : null;
+  if (
+    preview &&
+    ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End"].includes(
+      event.key,
+    )
+  ) {
+    event.preventDefault();
+    const items = [...document.querySelectorAll<HTMLElement>(".theme-preview")];
+    const index = items.indexOf(preview);
+    const next =
+      event.key === "Home"
+        ? 0
+        : event.key === "End"
+          ? items.length - 1
+          : (index +
+              (["ArrowLeft", "ArrowUp"].includes(event.key) ? -1 : 1) +
+              items.length) %
+            items.length;
+    const id = items[next]?.dataset.theme;
+    if (id) {
+      selectTheme(id);
+      redrawThemeStudio(`.theme-preview[data-theme="${id}"]`);
+    }
+    return;
+  }
+
+  if (
+    archiveMenu &&
+    ["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)
+  ) {
+    event.preventDefault();
+    const items = [
+      ...archiveMenu.querySelectorAll<HTMLButtonElement>(
+        "button:not(:disabled)",
+      ),
+    ];
+    const index = items.indexOf(document.activeElement as HTMLButtonElement);
+    const next =
+      event.key === "Home"
+        ? 0
+        : event.key === "End"
+          ? items.length - 1
+          : (index + (event.key === "ArrowUp" ? -1 : 1) + items.length) %
+            items.length;
+    items[next]?.focus({ preventScroll: true });
+    return;
+  }
   if (archiveMenu && event.key === "Escape") {
     event.preventDefault();
     closeArchiveMenu(true);
     return;
   }
   const row = (event.target as HTMLElement).closest<HTMLElement>(
-    ".archive-table tbody tr[data-archive-row]",
+    ".archive-table tbody tr[data-archive-row], .archive-diff-table tr[data-diff-index]",
   );
   if (
     row &&
@@ -1569,8 +1753,8 @@ document.addEventListener("pointerdown", (event) => {
 });
 window.addEventListener("resize", () => closeArchiveMenu());
 window.addEventListener("wheel", () => closeArchiveMenu(), { passive: true });
-document.addEventListener("change", (event) => {
-  const target = event.target as HTMLSelectElement;
+document.addEventListener("change", async (event) => {
+  const target = event.target as HTMLSelectElement | HTMLInputElement;
   if (target.id === "diff-base") {
     diffBase = target.value;
     diffGeneration++;
@@ -1581,6 +1765,58 @@ document.addEventListener("change", (event) => {
   }
   if (target.id === "icon-buttons")
     setIconButtons((event.target as HTMLInputElement).checked);
+  if (target.id === "theme-import-file") {
+    const file = (target as HTMLInputElement).files?.[0];
+    if (!file) return;
+    try {
+      if (file.size > 131072) throw new Error("Theme JSON exceeds 128 KiB.");
+      importTheme(await file.text());
+      redrawThemeStudio();
+      notify("Imported as the Custom theme.");
+    } catch (error) {
+      const status = document.querySelector(".theme-file-status");
+      if (status) {
+        status.textContent = String(error);
+        status.setAttribute("role", "alert");
+      }
+      (target as HTMLInputElement).value = "";
+    }
+    return;
+  }
+  if (target instanceof HTMLInputElement && target.dataset.themeColor) {
+    setCustomColor(target.dataset.themeColor, target.value);
+    redrawThemeStudio(
+      `[data-theme-color="${CSS.escape(target.dataset.themeColor)}"]`,
+    );
+    return;
+  }
+  if (
+    target.id === "custom-theme-family" ||
+    target.id === "custom-theme-size"
+  ) {
+    saveAppearance(
+      document.querySelector<HTMLSelectElement>("#custom-theme-family")!.value,
+      Number(
+        document.querySelector<HTMLSelectElement>("#custom-theme-size")!.value,
+      ),
+    );
+    redrawThemeStudio(`#${target.id}`);
+    return;
+  }
+  if (
+    target.id === "custom-theme-radius" ||
+    target.id === "custom-theme-density"
+  ) {
+    setCustomLayout(
+      Number(
+        document.querySelector<HTMLSelectElement>("#custom-theme-radius")!
+          .value,
+      ),
+      document.querySelector<HTMLSelectElement>("#custom-theme-density")!.value,
+    );
+    redrawThemeStudio(`#${target.id}`);
+    return;
+  }
   if (target.id === "appearance-family" || target.id === "appearance-size") {
     saveAppearance(
       document.querySelector<HTMLSelectElement>("#appearance-family")!.value,

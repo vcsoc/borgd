@@ -5,6 +5,7 @@ mod installer;
 mod relocation;
 mod service;
 mod terminal;
+mod themes;
 mod worker;
 #[cfg(any(windows, test))]
 mod worker_tls;
@@ -258,6 +259,7 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            themes::export_theme,
             worker_service_info,
             worker_service_action,
             open_project_url,

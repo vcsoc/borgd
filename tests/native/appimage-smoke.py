@@ -236,7 +236,7 @@ def main():
                 print("PASS: native archive panel automatically loads on opening, defaults to date descending, and displays real Borg counts and sizes")
                 js("document.querySelector('.archive-table tbody tr[data-archive-row]').dispatchEvent(new MouseEvent('contextmenu',{bubbles:true,cancelable:true,clientX:400,clientY:420}))")
                 until(lambda: js("return !!document.querySelector('[role=menu][aria-label=\"Archive actions\"]')"))
-                js("document.querySelector('[role=menuitem]').click()")
+                js("[...document.querySelectorAll('[role=menuitem]')].find(item => item.textContent === 'View diff').click()")
                 try:
                     until(lambda: js("return !!document.querySelector('.archive-diff') && !document.querySelector('.archive-diff .repository-error') && (!!document.querySelector('.archive-diff-table') || document.querySelector('.archive-diff').textContent.includes('No differences found between these archives.'))"))
                 except AssertionError:
@@ -244,7 +244,12 @@ def main():
                     raise
                 assert worker_rpc("get_status")["history"][0]["action"] == "diff"
                 Path("test-results/native-archive-diff.png").write_bytes(base64.b64decode(request("GET", root + "/screenshot")))
-                js("document.querySelector('[data-action=\"diff-back\"]').click()")
+                js("const row=[...document.querySelectorAll('.archive-diff-table tbody tr')].find(row=>row.textContent.includes('not-selected.txt')); row.dispatchEvent(new MouseEvent('contextmenu',{bubbles:true,cancelable:true,clientX:400,clientY:350}))")
+                js("[...document.querySelectorAll('[role=menuitem]')].find(item=>item.textContent === 'Go to').click()")
+                until(lambda: js("return document.querySelector('.archive-content-pane tr[aria-selected=true]')?.dataset.entry.endsWith('not-selected.txt') && !!document.querySelector('[data-restore-selection]')"))
+                Path("test-results/native-diff-go-to.png").write_bytes(base64.b64decode(request("GET", root + "/screenshot")))
+                assert worker_rpc("get_status")["history"][0]["action"] == "files"
+                js("document.querySelector('[data-action=\"archive-back\"]').click()")
                 until(lambda: js("return !!document.querySelector('.repo-header .repo-actions') && !!document.querySelector('.quick-profile-list') && !!document.querySelector('[data-action=\"files\"]')"))
                 print("PASS: native right-click archive comparison runs real read-only Borg diff and returns to redesigned repository headers and quick profiles")
 
@@ -275,6 +280,9 @@ def main():
                 js("document.querySelector('[data-route=\"repositories\"]').click(); document.querySelector('[data-panel=\"profiles\"][data-id=\"relocation-native\"]').click(); document.querySelector('[data-action=\"edit-profile\"]').click()")
                 assert js("return !!document.querySelector('#profile-form') && !document.querySelector('dialog[open]') && document.querySelector('#pick-source').textContent.trim() === '+ Source'")
                 Path("test-results/native-profile-editor.png").write_bytes(base64.b64decode(request("GET", root + "/screenshot")))
+                assert js("const input=document.querySelector('#profile-form [name=intervalHours]'); input.value='20'; input.scrollIntoView({block:'center'}); input.focus(); input.select(); return input.type==='text' && input.inputMode==='numeric' && input.selectionStart===0 && input.selectionEnd===2 && getComputedStyle(input,'::selection').backgroundColor !== getComputedStyle(input).backgroundColor")
+                Path("test-results/native-profile-selection.png").write_bytes(base64.b64decode(request("GET", root + "/screenshot")))
+                print("PASS: numeric profile fields support real native text selection with contrasting selection colors")
                 js("document.querySelector('#profile-form [name=name]').value='Cancelled draft'; document.querySelector('[data-action=\"profile-cancel\"]').click()")
                 assert invoke("get_config")["profiles"][0]["name"] == "Native files"
                 js("document.querySelector('[data-action=\"edit-profile\"]').click(); document.querySelector('#profile-form [name=name]').value='Native files edited'; document.querySelector('#profile-form').requestSubmit()")
@@ -288,6 +296,13 @@ def main():
                 js("document.querySelector('[data-route=\"settings\"]').click(); document.querySelector('[data-action=\"appearance-reset\"]').click()")
                 assert js("return getComputedStyle(document.documentElement).fontSize==='14px'")
                 print("PASS: native appearance preference survives reload and resets to the JetBrains Mono 14px default")
+                js("document.querySelector('[data-action=\"theme-studio\"]').click(); document.querySelector('[data-action=\"theme-select\"][data-theme=ocean]').click(); document.querySelector('[data-action=\"theme-mode\"][data-mode=light]').click(); document.querySelector('[data-route=repositories]').click()")
+                assert js("return document.documentElement.dataset.theme==='ocean' && document.documentElement.dataset.themeMode==='light' && getComputedStyle(document.querySelector('.repo-header')).backgroundColor === 'rgb(201, 229, 238)'")
+                Path("test-results/native-theme-light.png").write_bytes(base64.b64decode(request("GET", root + "/screenshot")))
+                request("POST", root + "/refresh", {})
+                until(lambda: js("return document.documentElement.dataset.theme==='ocean' && document.documentElement.dataset.themeMode==='light' && document.querySelector('.engine-status')?.textContent.includes(arguments[0])", [expected_version]))
+                js("document.querySelector('[data-action=\"theme-studio\"]').click(); document.querySelector('[data-action=\"theme-select\"][data-theme=midnight]').click(); document.querySelector('[data-action=\"theme-mode\"][data-mode=dark]').click()")
+                print("PASS: native Theme Studio applies colored repository headers in light mode and preserves the theme across reload")
                 assert js("const bar=document.querySelector('.toolbar').getBoundingClientRect(); const center=bar.top+bar.height/2; return [...document.querySelectorAll('.top-brand strong, .top-brand .version, .brand-tagline, .engine-status, .engine-status > span, .top-icon, .top-icon svg')].filter(el=>el.getBoundingClientRect().width>0).every(el=>{const box=el.getBoundingClientRect(); return Math.abs(box.top+box.height/2-center)<=1})")
                 print("PASS: native toolbar branding, badge, Borg status and controls share a centered alignment")
                 js("document.dispatchEvent(new KeyboardEvent('keydown',{key:'+',ctrlKey:true,bubbles:true,cancelable:true}))")

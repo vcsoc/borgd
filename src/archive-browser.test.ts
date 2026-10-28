@@ -37,3 +37,21 @@ it("escapes archive names and resets navigation when another archive is loaded",
   expect(browser.query).toBe("");
   expect(browser.html()).toContain("No items");
 });
+
+it("reveals and selects nested paths beyond the first page, without inventing missing items", () => {
+  const browser = new ArchiveBrowser();
+  browser.load(
+    Array.from({ length: 451 }, (_, i) => ({
+      path: `deep/folder/file-${i}.txt`,
+      type: "-",
+    })),
+  );
+  expect(browser.reveal("./deep/folder/file-450.txt")).toBe(true);
+  expect(browser.folder).toBe("deep/folder");
+  expect(browser.expanded.has("deep")).toBe(true);
+  expect(browser.expanded.has("deep/folder")).toBe(true);
+  expect(browser.selection.has("deep/folder/file-450.txt")).toBe(true);
+  expect(browser.limit).toBeGreaterThanOrEqual(451);
+  expect(browser.reveal("missing.txt")).toBe(false);
+  expect(browser.selection.size).toBe(1);
+});

@@ -1,3 +1,4 @@
+import { terminalColors } from "./themes";
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
@@ -47,6 +48,9 @@ export class TerminalDock {
     } catch {
       /* Storage can be unavailable. */
     }
+    window.addEventListener("borgd-theme", () => {
+      for (const tab of this.tabs) tab.term.options.theme = terminalColors();
+    });
     this.element.className = "terminal-dock";
     this.element.setAttribute("aria-label", "Integrated system terminal");
     this.element.hidden = true;
@@ -253,12 +257,7 @@ export class TerminalDock {
       fontFamily: '"SFMono-Regular", Consolas, "Liberation Mono", monospace',
       fontSize: 12,
       scrollback: 5000,
-      theme: {
-        background: "#14171c",
-        foreground: "#d3dbe8",
-        cursor: "#a9c3ff",
-        selectionBackground: "#3b5078",
-      },
+      theme: terminalColors(),
       allowProposedApi: false,
     });
     const fit = new FitAddon();

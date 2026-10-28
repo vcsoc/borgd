@@ -77,6 +77,22 @@ async function desktop(page: Page, supported = true, single = false) {
                   cache: { stats: { unique_csize: 100, total_size: 200 } },
                 },
               };
+            if (request.action === "files")
+              return {
+                exitCode: 0,
+                text: "",
+                data: [
+                  {
+                    path: "folder/<img src=x onerror=alert(1)>.txt",
+                    type: "-",
+                    size: 20,
+                  },
+                  { path: "new.txt", type: "-", size: 42 },
+                  ...(request.archive !== "latest"
+                    ? [{ path: "gone/deep/removed.txt", type: "-", size: 10 }]
+                    : []),
+                ],
+              };
             if (request.action === "diff") {
               if ((window as any).__diffFailure)
                 throw new Error("Comparison storage unavailable");
@@ -222,6 +238,8 @@ test("keyboard archive menu cancels and comparison errors retry without showing 
     (window as any).__diffFailure = true;
   });
   await page.keyboard.press("Shift+F10");
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("ArrowDown");
   await page.keyboard.press("Enter");
   await expect(page.getByRole("alert")).toContainText(
     "Comparison storage unavailable",
@@ -314,4 +332,127 @@ test("large diffs reveal all changes incrementally", async ({ page }) => {
     .click();
   await expect(page.locator(".archive-diff-table tbody tr")).toHaveCount(451);
   await expect(page.getByText("file-450", { exact: true })).toBeVisible();
+});
+
+test("archive context actions browse or ask before restoring, in the requested order", async ({
+  page,
+}) => {
+  await desktop(page);
+  await page.locator('[data-action="load-archives"][data-id="a"]').count();
+  await page.locator('[data-panel="archives"][data-id="a"]').click();
+  const row = page.locator(".archive-table tbody tr").first();
+  await row.click({ button: "right" });
+  await expect(page.getByRole("menuitem")).toHaveText([
+    "Browse",
+    "Restore",
+    "View diff",
+  ]);
+  await page.getByRole("menuitem", { name: "Browse", exact: true }).click();
+  await expect(
+    page.getByRole("searchbox", { name: "Search archive" }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Back to archives", exact: true })
+    .click();
+  await row.click({ button: "right" });
+  await page.getByRole("menuitem", { name: "Restore", exact: true }).click();
+  await expect(page.getByRole("dialog")).toBeVisible();
+  expect(
+    await page.evaluate(() =>
+      (window as any).__operations.some((r: any) => r.action === "restore"),
+    ),
+  ).toBe(false);
+});
+test("diff Go to highlights a nested path and selects the older snapshot for removed items", async ({
+  page,
+}) => {
+  await desktop(page);
+  await page.evaluate(() => {
+    (window as any).__diffRows.push({
+      path: "gone/deep/removed.txt",
+      changes: [{ type: "removed", size: 10 }],
+    });
+  });
+  await page.locator('[data-panel="archives"][data-id="a"]').click();
+  await page
+    .locator(".archive-table tbody tr")
+    .first()
+    .click({ button: "right" });
+  await page.getByRole("menuitem", { name: "View diff", exact: true }).click();
+  await page
+    .locator(".archive-diff-table tbody tr")
+    .first()
+    .click({ button: "right" });
+  await page.getByRole("menuitem", { name: "Go to", exact: true }).click();
+  await expect(
+    page.locator('.archive-content-pane tr[aria-selected="true"]'),
+  ).toHaveAttribute("data-entry", "folder/<img src=x onerror=alert(1)>.txt");
+  await expect(
+    page.getByRole("button", { name: "Restore selected (1)", exact: true }),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(() =>
+      (window as any).__operations
+        .filter((r: any) => r.action === "files")
+        .at(-1),
+    ),
+  ).toMatchObject({ repositoryId: "a", archive: "latest" });
+  await page
+    .getByRole("button", { name: "Back to archives", exact: true })
+    .click();
+  await page
+    .locator(".archive-table tbody tr")
+    .first()
+    .click({ button: "right" });
+  await page.getByRole("menuitem", { name: "View diff", exact: true }).click();
+  await page.locator(".archive-diff-table tbody tr").last().focus();
+  await page.keyboard.press("Shift+F10");
+  await page.getByRole("menuitem", { name: "Go to", exact: true }).click();
+  await expect(
+    page.locator('.archive-content-pane tr[aria-selected="true"]'),
+  ).toHaveAttribute("data-entry", "gone/deep/removed.txt");
+  expect(
+    await page.evaluate(() =>
+      (window as any).__operations
+        .filter((r: any) => r.action === "files")
+        .at(-1),
+    ),
+  ).toMatchObject({ repositoryId: "a", archive: "older" });
+});
+
+test("Go to reports paths absent from both snapshots without selecting or extracting anything", async ({
+  page,
+}) => {
+  await desktop(page);
+  await page.evaluate(() => {
+    (window as any).__diffRows = [
+      { path: "not-available.txt", changes: [{ type: "modified" }] },
+    ];
+  });
+  await page.locator('[data-panel="archives"][data-id="a"]').click();
+  await page
+    .locator(".archive-table tbody tr")
+    .first()
+    .click({ button: "right" });
+  await page.getByRole("menuitem", { name: "View diff", exact: true }).click();
+  await page.locator(".archive-diff-table tbody tr").click({ button: "right" });
+  await page.getByRole("menuitem", { name: "Go to", exact: true }).click();
+  await expect(page.locator("#toast")).toContainText(
+    "not available in either compared archive",
+  );
+  await expect(
+    page.locator('.archive-content-pane tr[aria-selected="true"]'),
+  ).toHaveCount(0);
+  expect(
+    await page.evaluate(() =>
+      (window as any).__operations
+        .filter((r: any) => r.action === "files")
+        .map((r: any) => r.archive),
+    ),
+  ).toEqual(["latest", "older"]);
+  expect(
+    await page.evaluate(() =>
+      (window as any).__operations.some((r: any) => r.action === "restore"),
+    ),
+  ).toBe(false);
 });

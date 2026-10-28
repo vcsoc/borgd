@@ -1,4 +1,4 @@
-# borgd 0.1.1
+# borgd 0.1.2
 
 A repository-centered desktop companion for Borg Backup 1.x.
 

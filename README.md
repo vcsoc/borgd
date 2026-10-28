@@ -82,10 +82,10 @@ Output: `src-tauri/target/release/bundle/`. Signing/notarization credentials are
 On Linux:
 
 ```sh
-chmod +x borgd_0.1.1_amd64.AppImage
-./borgd_0.1.1_amd64.AppImage
+chmod +x borgd_0.1.2_amd64.AppImage
+./borgd_0.1.2_amd64.AppImage
 # Without FUSE:
-./borgd_0.1.1_amd64.AppImage --appimage-extract-and-run
+./borgd_0.1.2_amd64.AppImage --appimage-extract-and-run
 ```
 
 ## Verification
@@ -112,7 +112,7 @@ A separate **native Linux AppImage** smoke test uses real WebKit, IPC, Borg, key
 
 ```sh
 cargo install tauri-driver --locked
-python3 tests/native/appimage-smoke.py --application src-tauri/target/release/bundle/appimage/borgd_0.1.1_amd64.AppImage
+python3 tests/native/appimage-smoke.py --application src-tauri/target/release/bundle/appimage/borgd_0.1.2_amd64.AppImage
 ```
 
 Screenshots and native driver logs land in `test-results/`.

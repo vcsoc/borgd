@@ -144,7 +144,7 @@ test("top branding opens inline About with developer, GitHub link and exact cust
   await expect(
     page.getByText("Developed by Chris Visser", { exact: true }),
   ).toBeVisible();
-  await expect(page.locator(".about-page h2")).toHaveText("borgd 0.1.1");
+  await expect(page.locator(".about-page h2")).toHaveText("borgd 0.1.2");
   const link = page.getByRole("link", {
     name: "https://github.com/vcsoc/borgd",
     exact: true,

@@ -122,7 +122,7 @@ test("worker controls register, confirm graceful stop, start and uninstall witho
   ]);
   await expect(
     page.getByText(
-      "Version 0.1.1 · Rust + Tauri · Developed by Chris Visser.",
+      "Version 0.1.2 · Rust + Tauri · Developed by Chris Visser.",
       { exact: true },
     ),
   ).toBeVisible();

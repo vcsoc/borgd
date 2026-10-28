@@ -442,7 +442,68 @@ impl Backend {
         serde_json::from_slice(&fs::read(path).map_err(|e| e.to_string())?)
             .map_err(|e| e.to_string())
     }
+    fn archive_code(&self, profile_id: &str) -> Result<String, String> {
+        let path = self.directory.join("archive-codes.json");
+        let mut codes: HashMap<String, String> = match std::fs::read(&path) {
+            Ok(bytes) => serde_json::from_slice(&bytes)
+                .map_err(|e| format!("Invalid archive ownership codes: {e}"))?,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => HashMap::new(),
+            Err(error) => return Err(error.to_string()),
+        };
+        let mut unique = std::collections::HashSet::new();
+        for code in codes.values() {
+            if code.len() != 6
+                || !code
+                    .bytes()
+                    .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit())
+                || !unique.insert(code.clone())
+            {
+                return Err("Archive ownership codes are invalid or duplicated; no backup or prune was run.".into());
+            }
+        }
+        if let Some(code) = codes.get(profile_id) {
+            return Ok(code.clone());
+        }
+        let profile_ids = self
+            .config()?
+            .profiles
+            .into_iter()
+            .map(|p| p.id)
+            .collect::<std::collections::HashSet<_>>();
+        let leading: String = profile_id
+            .chars()
+            .take_while(|c| c.is_ascii_alphanumeric())
+            .take(6)
+            .collect();
+        let mut selected = None;
+        for attempt in 0usize..4096 {
+            let prefix_len = leading.len().saturating_sub(attempt.div_ceil(36));
+            let random = uuid::Uuid::new_v4();
+            let mut code = leading[..prefix_len].to_owned();
+            code.extend(
+                random.as_bytes()[..6 - prefix_len]
+                    .iter()
+                    .map(|b| b"0123456789abcdefghijklmnopqrstuvwxyz"[usize::from(*b) % 36] as char),
+            );
+            if !unique.contains(&code) && !profile_ids.contains(&code) {
+                selected = Some(code);
+                break;
+            }
+        }
+        let code = selected.ok_or("Could not allocate a unique archive code")?;
+        codes.insert(profile_id.to_owned(), code.clone());
+        atomic_json(&self.directory, "archive-codes.json", &codes)?;
+        Ok(code)
+    }
     fn execute_inner(&self, request: &Request, approval: Option<&str>) -> Result<Output, String> {
+        self.execute_namespace(request, approval, None)
+    }
+    fn execute_namespace(
+        &self,
+        request: &Request,
+        approval: Option<&str>,
+        namespace: Option<&str>,
+    ) -> Result<Output, String> {
         probe()?;
         let config = self.config()?;
         validate(&config)?;
@@ -461,6 +522,42 @@ impl Backend {
                 .find(|p| Some(&p.id) == request.profile_id.as_ref() && p.repository_id == repo.id)
                 .ok_or("Backup profile not found.")
         };
+        if request.action == "prune" && namespace.is_none() {
+            let p = profile()?;
+            let code = self.archive_code(&p.id)?;
+            let common: String =
+                p.id.chars()
+                    .zip(code.chars())
+                    .take_while(|(a, b)| a == b)
+                    .map(|(a, _)| a)
+                    .collect();
+            let prefix = format!("borgd-{common}");
+            let legacy = format!("borgd-{}-", p.id);
+            let current = format!("borgd-{code}-");
+            let mut listing_request = request.clone();
+            listing_request.action = "archives".into();
+            let listing = self.execute_namespace(&listing_request, approval, None)?;
+            if listing.exit_code != 0 {
+                return Err("Could not verify a complete archive ownership listing; no pruning was performed.".into());
+            }
+            // Borg 1.x cannot union archive-name globs. Verify the entire shared prefix
+            // before pruning a single combined pool, preserving exact retention policy.
+            for archive in listing.data["archives"]
+                .as_array()
+                .ok_or("Missing archive ownership listing")?
+            {
+                let name = archive["name"]
+                    .as_str()
+                    .ok_or("Invalid archive ownership listing")?;
+                if name.starts_with(&prefix)
+                    && !name.starts_with(&legacy)
+                    && !name.starts_with(&current)
+                {
+                    return Err("Retention prefix overlaps an unrelated archive. No pruning was performed; rename that unrelated archive or use Borg manually with an explicit selection.".into());
+                }
+            }
+            return self.execute_namespace(request, approval, Some(&format!("{prefix}*")));
+        }
         let archive = || -> Result<String, String> {
             let name = request.archive.as_ref().ok_or("Choose an archive.")?;
             if name.is_empty()
@@ -513,7 +610,7 @@ impl Backend {
                 let p = profile()?;
                 let name = format!(
                     "borgd-{}-{}",
-                    p.id,
+                    self.archive_code(&p.id)?,
                     Utc::now().format("%Y-%m-%dT%H-%M-%S%.3f")
                 );
                 args.extend([
@@ -537,7 +634,9 @@ impl Backend {
                     "prune".into(),
                     "--list".into(),
                     "--glob-archives".into(),
-                    format!("borgd-{}-*", p.id),
+                    namespace
+                        .map(str::to_owned)
+                        .unwrap_or_else(|| format!("borgd-{}-*", p.id)),
                     format!("--keep-daily={}", p.keep_daily),
                     format!("--keep-weekly={}", p.keep_weekly),
                     format!("--keep-monthly={}", p.keep_monthly),
@@ -631,6 +730,7 @@ impl Backend {
             command.env_remove(key);
         }
         command.env("BORG_EXIT_CODES", "legacy");
+        command.env("TZ", "UTC");
         command.env(
             "BORG_RELOCATED_REPO_ACCESS_IS_OK",
             if approval.is_some() { "yes" } else { "no" },
@@ -721,7 +821,7 @@ impl Backend {
         };
         let text = if request.action == "archives" {
             let archives = data["archives"].as_array().ok_or("Expected an archive array from Borg info.")?.iter().map(|archive| serde_json::json!({
-                "name": archive["name"], "id": archive["id"], "time": archive["start"],
+                "name": archive["name"], "id": archive["id"], "time": utc_archive_time(&archive["start"]),
                 "stats": { "nfiles": archive["stats"]["nfiles"], "original_size": archive["stats"]["original_size"] }
             })).collect::<Vec<_>>();
             // Keep only listing metadata, not stored command lines/host information, in diagnostics.
@@ -736,6 +836,19 @@ impl Backend {
             text,
         })
     }
+}
+fn utc_archive_time(value: &Value) -> Value {
+    let Some(time) = value.as_str() else {
+        return value.clone();
+    };
+    // Borg 1.x omits the offset from JSON timestamps. Its process is explicitly run in UTC.
+    if let Ok(time) = chrono::NaiveDateTime::parse_from_str(time, "%Y-%m-%dT%H:%M:%S%.f") {
+        return Value::String(
+            time.and_utc()
+                .to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
+        );
+    }
+    value.clone()
 }
 fn atomic_json(directory: &Path, name: &str, value: &impl Serialize) -> Result<(), String> {
     fs::create_dir_all(directory).map_err(|e| e.to_string())?;
@@ -771,7 +884,7 @@ fn borg_command_at(directory: Option<&Path>) -> Command {
         let existing = std::env::var("WSLENV").unwrap_or_default();
         command.env(
             "WSLENV",
-            format!("{existing}:BORG_PASSPHRASE:BORG_EXIT_CODES:BORG_RSH:BORG_RELOCATED_REPO_ACCESS_IS_OK"),
+            format!("{existing}:BORG_PASSPHRASE:BORG_EXIT_CODES:BORG_RSH:BORG_RELOCATED_REPO_ACCESS_IS_OK:TZ"),
         );
         command
     }
@@ -821,6 +934,31 @@ pub fn probe() -> Result<String, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn short_archive_codes_are_unique_stable_and_persisted() {
+        let directory = tempfile::tempdir().unwrap();
+        let backend = Backend::new(directory.path().to_path_buf());
+        let first = backend.archive_code("first-profile").unwrap();
+        assert_eq!(first.len(), 6);
+        assert!(first
+            .bytes()
+            .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit()));
+        assert_ne!(first, backend.archive_code("second-profile").unwrap());
+        assert_eq!(
+            first,
+            Backend::new(directory.path().to_path_buf())
+                .archive_code("first-profile")
+                .unwrap()
+        );
+        assert_eq!(
+            utc_archive_time(&serde_json::json!("2026-10-28T02:38:43.732000")),
+            serde_json::json!("2026-10-28T02:38:43.732Z")
+        );
+        assert_eq!(
+            utc_archive_time(&serde_json::json!("2026-10-28T04:38:43+02:00")),
+            serde_json::json!("2026-10-28T04:38:43+02:00")
+        );
+    }
     fn config(location: String, source: String) -> Config {
         Config {
             onboarding_complete: false,
@@ -1119,6 +1257,15 @@ mod tests {
         );
         assert!(list.data["archives"][0]["time"].as_str().is_some());
         assert!(!list.text.contains("command_line"));
+        let listed = &list.data["archives"][0];
+        let generated = listed["name"].as_str().unwrap();
+        let suffix = generated.strip_prefix("borgd-").unwrap();
+        assert_eq!(suffix.chars().nth(6), Some('-'));
+        assert!(suffix[..6].bytes().all(|c| c.is_ascii_alphanumeric()));
+        assert!(
+            chrono::NaiveDateTime::parse_from_str(&suffix[7..], "%Y-%m-%dT%H-%M-%S%.f").is_ok()
+        );
+        assert!(listed["time"].as_str().unwrap().ends_with('Z'));
         let name = list.data["archives"][0]["name"]
             .as_str()
             .unwrap()
@@ -1229,6 +1376,23 @@ mod tests {
         assert!(!names.contains(&"borgd-p1-old"));
         assert!(names.contains(&"borgd-other-old"));
         assert!(names.contains(&"manual-old"));
+        let overlap = borg_command()
+            .args([
+                "create",
+                &format!("{location}::borgd-p11-unrelated"),
+                source.to_str().unwrap(),
+            ])
+            .env("BORG_PASSPHRASE", "test-only-passphrase")
+            .output()
+            .unwrap();
+        assert!(overlap.status.success());
+        let mut prune = request("prune");
+        prune.dry_run = Some(false);
+        assert!(backend
+            .execute(prune)
+            .err()
+            .unwrap()
+            .contains("overlaps an unrelated archive"));
         assert!(!fs::read_to_string(backend.directory.join("config.json"))
             .unwrap()
             .contains("test-only-passphrase"));

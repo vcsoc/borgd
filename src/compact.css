@@ -194,3 +194,14 @@ html[style*="zoom"] .shell {
     transition: none;
   }
 }
+
+.worker-service-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 18px 0;
+}
+.worker-service-settings code {
+  overflow-wrap: anywhere;
+}

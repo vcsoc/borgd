@@ -38,6 +38,7 @@ import {
   Plus,
   RefreshCw,
   Scissors,
+  Square,
   Search,
   Settings2,
   ShieldCheck,
@@ -81,6 +82,7 @@ const icons = {
   Plus,
   RefreshCw,
   Scissors,
+  Square,
   Search,
   Settings2,
   ShieldCheck,
@@ -240,7 +242,8 @@ const button = (
   primary = false,
 ) =>
   `<button class="button ${primary ? "primary" : ""}" data-action="${action}" ${attrs}>${icon(glyph)}${label}</button>`;
-const disabled = () => (status.busy || !available ? "disabled" : "");
+const disabled = () =>
+  status.busy || status.workerOffline || !available ? "disabled" : "";
 function notify(message: string, bad = false) {
   const toast = document.querySelector<HTMLDivElement>("#toast")!;
   toast.textContent = message;
@@ -295,7 +298,7 @@ function render() {
     )
     .join(
       "",
-    )}</nav></aside><main><header class="toolbar"><button class="top-brand" data-route="about" aria-label="About borgd" title="About borgd"><strong>borgd</strong><span class="version">0.1</span><span class="brand-tagline">BACKUP COMPANION</span></button><div class="top-tools"><div class="engine-status" role="status" title="${e(status.busy ? `${version} · Operation in progress` : version)}"><span class="dot ${status.busy ? "amber pulse" : available ? "green" : "amber"}"></span><span>${e(version)}</span>${status.busy ? '<span id="running-label">Working</span>' : ""}</div>${topIcon("Terminal", "terminal", `data-action="toggle-terminal" aria-expanded="${terminalDock.visible}"`)}${topIcon("Settings & help", "settings-2", 'data-route="settings"')}</div></header><div class="content ${route === "activity" || route === "archiveFiles" ? "activity-content" : ""}"><div class="page-heading"><div><div class="eyebrow">YOUR BACKUP WORKSPACE</div><h1>${pages[route][0]}</h1><p>${pages[route][1]}</p></div>${route === "archiveFiles" ? button("Back to archives", "archive-back", "arrow-left") : route === "repositories" ? button("Add repository", "add-repo", "plus", status.busy ? "disabled" : "", true) : ""}</div>${initialized && !available && isFreshInstallation(config, status.history) ? `<div class="notice">${icon("info")}<div><strong>${isTauri() ? "Borg needs a little setup" : "Desktop preview"}</strong><p>${isTauri() ? e(error || "Looking for Borg 1.x on this computer.") : "This is the browser preview. Run the Tauri desktop app to connect repositories and execute real backups."}</p></div>${button("Setup guide", "setup", "arrow-up-right")}</div>` : ""}<div id="view">${view()}</div></div><footer><span>${icon("lock-keyhole")} Passphrases stay in memory, never on disk.</span><span id="footer-status">${status.busy ? (status.workerRunning ? "Backup worker is running. You may close this window." : "Keep borgd open until this operation finishes.") : status.workerRunning ? "Background backup worker connected" : "Powered by Borg Backup"}</span></footer></main></div>`;
+    )}</nav></aside><main><header class="toolbar"><button class="top-brand" data-route="about" aria-label="About borgd" title="About borgd"><strong>borgd</strong><span class="version">0.1</span><span class="brand-tagline">BACKUP COMPANION</span></button><div class="top-tools"><div class="engine-status" role="status" title="${e(status.busy ? `${version} · Operation in progress` : version)}"><span class="dot ${status.busy ? "amber pulse" : available ? "green" : "amber"}"></span><span>${e(version)}</span>${status.busy ? '<span id="running-label">Working</span>' : ""}</div>${topIcon("Terminal", "terminal", `data-action="toggle-terminal" aria-expanded="${terminalDock.visible}"`)}${topIcon("Settings & help", "settings-2", 'data-route="settings"')}</div></header><div class="content ${route === "activity" || route === "archiveFiles" ? "activity-content" : ""}"><div class="page-heading"><div><div class="eyebrow">YOUR BACKUP WORKSPACE</div><h1>${pages[route][0]}</h1><p>${pages[route][1]}</p></div>${route === "archiveFiles" ? button("Back to archives", "archive-back", "arrow-left") : route === "repositories" ? button("Add repository", "add-repo", "plus", status.busy ? "disabled" : "", true) : ""}</div>${initialized && !available && isFreshInstallation(config, status.history) ? `<div class="notice">${icon("info")}<div><strong>${isTauri() ? "Borg needs a little setup" : "Desktop preview"}</strong><p>${isTauri() ? e(error || "Looking for Borg 1.x on this computer.") : "This is the browser preview. Run the Tauri desktop app to connect repositories and execute real backups."}</p></div>${button("Setup guide", "setup", "arrow-up-right")}</div>` : ""}<div id="view">${view()}</div></div><footer><span>${icon("lock-keyhole")} Passphrases stay in memory, never on disk.</span><span id="footer-status">${status.busy ? (status.workerRunning ? "Backup worker is running. You may close this window." : "Keep borgd open until this operation finishes.") : status.workerRunning ? "Background backup worker connected" : status.workerOffline ? "Background worker stopped — Start it in Settings" : "Powered by Borg Backup"}</span></footer></main></div>`;
   if (route === "archiveFiles" && !archiveLoading && !archiveError) {
     const browserRoot = app.querySelector<HTMLElement>("#archive-browser-root");
     if (browserRoot)
@@ -435,8 +438,67 @@ function archiveView(id: string) {
 function activity() {
   return `<section class="activity-workspace" aria-label="Operation activity"><div id="check-progress" aria-live="polite">${checkProgressMarkup()}</div><div class="activity-section-heading"><h2>Operation log</h2><span class="pill ${status.busy ? "success" : ""}" id="activity-state">${status.busy ? "Running" : "Idle"}</span></div><div class="activity-log-panel"><button class="copy-button copy-log" data-action="copy-log" aria-label="Copy operation log" title="Copy operation log" ${status.logs.length ? "" : "disabled"}>${icon("copy")}</button><pre class="terminal" id="terminal" tabindex="0" aria-label="Borg operation output">${e(status.logs.join("\n") || "No operations in this session.\nYour Borg output will appear here as it happens.")}</pre></div><div class="activity-section-heading"><h2>Recent activity</h2><span class="muted">Last 200 operations</span></div>${status.history.length ? `<div class="table-wrap activity-history" tabindex="0" role="region" aria-label="Recent activity history"><table><thead><tr><th>Operation</th><th>Repository</th><th>Time</th><th>Result</th><th class="copy-column"><span class="sr-only">Copy details</span></th></tr></thead><tbody>${status.history.map((h) => `<tr><td class="capitalize">${e(h.action)}</td><td>${e(h.repositoryName ?? repo(h.repositoryId)?.name ?? "Forgotten repository")}</td><td>${e(date(h.time))}</td><td><span title="${e(h.message)}" class="pill ${h.exitCode === 0 ? "success" : h.exitCode === 1 ? "warning" : "failure"}">${h.exitCode === 0 ? "Completed" : h.exitCode === 1 ? "Warning" : "Failed"}</span></td><td class="copy-column"><button class="copy-button" data-action="copy-history" data-id="${e(h.id ?? "")}" data-time="${e(h.time)}" data-operation="${e(h.action)}" data-repository="${e(h.repositoryId)}" aria-label="Copy details for ${e(h.action)} at ${e(date(h.time))}" title="Copy full operation details">${icon("copy")}</button></td></tr>`).join("")}</tbody></table></div>` : `<div class="activity-empty">${empty("A clean slate", "Backup results, checks, and restores will be recorded here.")}</div>`}</section>`;
 }
+interface WorkerServiceInfo {
+  manager: string;
+  registered: boolean;
+  conflict: boolean;
+  running: boolean;
+  stopping: boolean;
+  paused: boolean;
+  definition: string;
+}
+let workerServiceInfo: WorkerServiceInfo | null = null;
+let workerServiceError = "";
+let workerServicePending = "";
+async function refreshWorkerService() {
+  if (!isTauri() || workerServicePending) return;
+  try {
+    workerServiceInfo = await invoke<WorkerServiceInfo>("worker_service_info");
+    workerServiceError = "";
+  } catch (error) {
+    workerServiceError = String(error);
+  }
+  if (route === "settings") render();
+}
+async function changeWorkerService(action: string) {
+  if (workerServicePending || !isTauri()) return;
+  modalRoot.querySelector<HTMLDialogElement>("dialog")?.close();
+  workerServicePending = action;
+  workerServiceError = "";
+  render();
+  try {
+    workerServiceInfo = await invoke<WorkerServiceInfo>(
+      "worker_service_action",
+      { action },
+    );
+    await refreshStatus();
+    notify(
+      action === "register"
+        ? "Worker startup registered. Existing jobs were not restarted."
+        : action === "start"
+          ? "Background worker started. Scheduled profiles can resume."
+          : action === "stop"
+            ? "Background worker stopped. Session passphrases cleared."
+            : "Worker startup removed. Repositories and profiles were not deleted.",
+    );
+  } catch (error) {
+    workerServiceError = String(error);
+    notify(workerServiceError, true);
+  } finally {
+    workerServicePending = "";
+    await refreshStatus().catch(() => {});
+    render();
+  }
+}
+function workerServiceSettings() {
+  const data = workerServiceInfo;
+  const blocked =
+    !isTauri() || !data || !!workerServicePending || data.conflict;
+  const attrs = (condition = false) => (blocked || condition ? "disabled" : "");
+  return `<section class="settings-card worker-service-settings" aria-label="Background backups"><h2>${icon("clock-3")} Background backups <span class="pill ${status.workerRunning && !status.workerOffline ? "success" : ""}">${workerServicePending === "stop" || workerServicePending === "uninstall" || data?.stopping ? "Stopping" : status.workerRunning && !status.workerOffline ? "Worker connected" : "Worker stopped"}</span></h2><div class="worker-service-actions">${button("Register worker startup", "service-register", "plus", attrs())}${button("Start worker", "service-start", "play", attrs(!!status.workerRunning && !status.workerOffline))}${button("Stop worker", "service-stop", "square", attrs(!status.workerRunning || !!status.workerOffline))}${button("Uninstall worker startup", "service-uninstall", "trash-2", attrs(!data?.registered))}${button("Refresh worker status", "service-refresh", "refresh-cw", !isTauri() || workerServicePending ? "disabled" : "")}</div>${workerServicePending ? `<p role="status">${workerServicePending === "stop" || workerServicePending === "uninstall" ? "Stopping safely: waiting for accepted Borg operations to finish. No process is force-killed." : "Updating worker startup…"}</p>` : ""}${workerServiceError ? `<p class="form-error" role="status">${e(workerServiceError)}</p>` : ""}<p>${data ? `${e(data.manager)}. ${data.registered ? "Startup registered." : "Startup not registered."} <code>${e(data.definition)}</code>` : isTauri() ? "Checking this platform's background worker support…" : "Worker management is available in the desktop application."}</p>${data?.conflict ? '<p class="form-error">An existing startup definition belongs to another configuration. It will not be overwritten or removed.</p>' : ""}<p>Register enables startup at user login; it does not restart the current worker. Start also works without registration. Stop pauses background backups until you explicitly Start again, waits for active work, and clears memory-only passphrases. Uninstall removes only worker startup, not your repositories, profiles, or archives.</p><p>Set a profile interval to opt in; 0 means manual only. Encrypted repositories need unlocking after a worker restart or reboot. Computers cannot back up while powered off or suspended; overdue schedules run once on resume. Linux without systemd uses desktop-login autostart, not a boot service. Systemd boot/logout operation still requires user lingering configured separately.</p></section>`;
+}
 function settings() {
-  return `${appearanceView()}<section class="settings-card"><h2>Button labels</h2><label class="button-mode-control"><span>Icon-only action buttons</span><input id="icon-buttons" role="switch" type="checkbox" ${iconButtons() ? "checked" : ""}><span class="toggle-track" aria-hidden="true"></span></label><p>Enabled by default. Turn off to show icons with text. Actions retain accessible labels and tooltips in either mode.</p><p>Zoom the application with Ctrl+ / Ctrl- (Cmd on macOS); Ctrl+0 resets to 100%.</p></section>${status.workerRunning ? `<section class="settings-card"><h2>${icon("clock-3")} Background backups <span class="pill success">Worker connected</span></h2><p>Set an interval on a backup profile to opt in; 0 means manual only. Scheduled backups continue with this window closed. Activity and configuration are shared with the worker. Encrypted repositories need unlocking again after a worker restart or reboot.</p><p>Linux user service: <code>borgd-worker.service</code>. A systemd installation autostarts at login; user lingering enables boot and logout operation. Without systemd, the worker stays alive after closing this window but needs external supervision for autostart.</p><code class="code-block">systemctl --user status borgd-worker.service<br>journalctl --user -u borgd-worker.service</code></section>` : ""}<section class="settings-card"><h2>${icon("terminal")} Borg engine</h2><p>borgd uses <strong>Borg Backup 1.x</strong> installed on your computer. Borg 2 repositories are not supported. Borg is not bundled inside the AppImage.</p><div class="engine-detail"><code>${e(version)}</code>${button("Check again", "probe", "refresh-cw")}${!available && isTauri() ? button("Install Borg Backup", "install-borg", "download") : ""}</div>${error ? `<p class="form-error" role="alert">${e(error)}</p>` : ""}<h3>Linux</h3><p>Install Borg using your distribution's package manager, then launch the borgd AppImage.</p><code class="code-block">sudo apt install borgbackup &nbsp; # Debian / Ubuntu<br>sudo pacman -S borg &nbsp; &nbsp; &nbsp; # Arch Linux</code><h3>macOS</h3><code class="code-block">brew install borgbackup</code><p>borgd also checks the standard Apple Silicon and Intel Homebrew locations when launched from Finder.</p><h3>Windows</h3><p>Install WSL and Borg inside your default Linux distribution. borgd invokes <code>wsl.exe --exec borg</code>. Use Linux paths such as <code>/mnt/c/Users/you/Documents</code> for sources and destinations. SSH keys and known hosts belong inside WSL.</p><code class="code-block">wsl --install<br>wsl -- sudo apt install borgbackup</code></section><section class="settings-card"><h2>${icon("shield-check")} Security, without surprises</h2><p>Repository passphrases are kept only for this session and passed to Borg through its environment, never command-line arguments or saved settings. ${status.workerRunning ? "Passphrases remain only in background-worker memory when this window closes. Use Lock to clear them; a worker restart or reboot forgets them." : "Unlock each encrypted repository again after restarting."}</p><p>Before using an SSH repository, connect once in your terminal to verify the server's host key and configure key-based authentication. borgd does not answer interactive SSH prompts.</p><p>Back up your repository key separately using <code>borg key export REPOSITORY keyfile</code>. Losing the key or passphrase can make encrypted backups unrecoverable.</p><p>Retention only affects archives created by the selected profile. Preview pruning first. No automatic prune, compact, archive deletion, or destructive repair is performed.</p></section><section class="settings-card"><h2>${icon("info")} About borgd</h2><p>Version 0.1.0 · Rust + Tauri · Inspired by Pigeon's quiet, compact workspace.</p><p>${status.workerRunning ? "The Linux background worker owns all Borg operations and schedules. This window can close during backups. The user service starts at login; with user lingering enabled it also runs after logout and starts at boot. Powered-off or suspended computers cannot run backups; overdue schedules run once on resume." : "Scheduling requires the app to stay open on this platform. Window closing is blocked during active operations."} Borg operations are serialized; no parallel backups or force-unlocking.</p></section>`;
+  return `${appearanceView()}<section class="settings-card"><h2>Button labels</h2><label class="button-mode-control"><span>Icon-only action buttons</span><input id="icon-buttons" role="switch" type="checkbox" ${iconButtons() ? "checked" : ""}><span class="toggle-track" aria-hidden="true"></span></label><p>Enabled by default. Turn off to show icons with text. Actions retain accessible labels and tooltips in either mode.</p><p>Zoom the application with Ctrl+ / Ctrl- (Cmd on macOS); Ctrl+0 resets to 100%.</p></section>${workerServiceSettings()}<section class="settings-card"><h2>${icon("terminal")} Borg engine</h2><p>borgd uses <strong>Borg Backup 1.x</strong> installed on your computer. Borg 2 repositories are not supported. Borg is not bundled inside the AppImage.</p><div class="engine-detail"><code>${e(version)}</code>${button("Check again", "probe", "refresh-cw")}${!available && isTauri() ? button("Install Borg Backup", "install-borg", "download") : ""}</div>${error ? `<p class="form-error" role="alert">${e(error)}</p>` : ""}<h3>Linux</h3><p>Install Borg using your distribution's package manager, then launch the borgd AppImage.</p><code class="code-block">sudo apt install borgbackup &nbsp; # Debian / Ubuntu<br>sudo pacman -S borg &nbsp; &nbsp; &nbsp; # Arch Linux</code><h3>macOS</h3><code class="code-block">brew install borgbackup</code><p>borgd also checks the standard Apple Silicon and Intel Homebrew locations when launched from Finder.</p><h3>Windows</h3><p>Install WSL and Borg inside your default Linux distribution. borgd invokes <code>wsl.exe --exec borg</code>. Use Linux paths such as <code>/mnt/c/Users/you/Documents</code> for sources and destinations. SSH keys and known hosts belong inside WSL.</p><code class="code-block">wsl --install<br>wsl -- sudo apt install borgbackup</code></section><section class="settings-card"><h2>${icon("shield-check")} Security, without surprises</h2><p>Repository passphrases are kept only for this session and passed to Borg through its environment, never command-line arguments or saved settings. ${status.workerRunning ? "Passphrases remain only in background-worker memory when this window closes. Use Lock to clear them; a worker restart or reboot forgets them." : "Unlock each encrypted repository again after restarting."}</p><p>Before using an SSH repository, connect once in your terminal to verify the server's host key and configure key-based authentication. borgd does not answer interactive SSH prompts.</p><p>Back up your repository key separately using <code>borg key export REPOSITORY keyfile</code>. Losing the key or passphrase can make encrypted backups unrecoverable.</p><p>Retention only affects archives created by the selected profile. Preview pruning first. No automatic prune, compact, archive deletion, or destructive repair is performed.</p></section><section class="settings-card"><h2>${icon("info")} About borgd</h2><p>Version 0.1.0 · Rust + Tauri · Developed by Chris Visser.</p><p>${status.workerRunning ? "The background worker owns all Borg operations and schedules. This window can close during backups. Registered startup runs at user login. Linux systemd additionally supports logout/boot operation when user lingering is separately enabled. Powered-off or suspended computers cannot run backups; overdue schedules run once on resume." : "Start the background worker above to run scheduled backups. Stopped workers do not execute schedules."} Borg operations are serialized; no parallel backups or force-unlocking.</p></section>`;
 }
 
 function modal(
@@ -1070,7 +1132,29 @@ async function handleAction(action: string, element: HTMLElement) {
     case "setup":
       route = "settings";
       render();
+      void refreshWorkerService();
       break;
+    case "service-refresh":
+      await refreshWorkerService();
+      break;
+    case "service-register":
+    case "service-start":
+      await changeWorkerService(action.slice(8));
+      break;
+    case "service-stop":
+    case "service-uninstall": {
+      const uninstall = action === "service-uninstall";
+      confirmAction(
+        uninstall ? "Uninstall worker startup?" : "Stop background backups?",
+        "Accepted Borg operations will finish before shutdown; no process is force-killed. Background schedules pause until Start. Memory-only repository passphrases will be cleared. " +
+          (uninstall
+            ? "The startup registration will be removed; repositories, archives and profiles remain unchanged."
+            : "The startup registration remains installed."),
+        uninstall ? "Uninstall worker startup" : "Stop worker",
+        () => changeWorkerService(uninstall ? "uninstall" : "stop"),
+      );
+      break;
+    }
     case "probe":
       await probe();
       break;
@@ -1265,6 +1349,7 @@ document.addEventListener("click", (event) => {
   if (element.dataset.route) {
     route = element.dataset.route;
     render();
+    if (route === "settings") void refreshWorkerService();
   } else if (element.dataset.repo) {
     repositoryId = element.dataset.repo;
     route = "repositories";
@@ -1323,11 +1408,13 @@ async function start() {
     try {
       const previousBusy = status.busy;
       const previousUnlocks = JSON.stringify(status.unlocked);
+      const previousWorker = `${status.workerRunning}:${status.workerOffline}`;
       const previousHistory =
         route === "repositories" ? overviewHistoryKey() : "";
       await refreshStatus();
       if (
         previousBusy !== status.busy ||
+        previousWorker !== `${status.workerRunning}:${status.workerOffline}` ||
         previousUnlocks !== JSON.stringify(status.unlocked) ||
         (route === "repositories" &&
           (previousHistory !== overviewHistoryKey() ||
@@ -1357,6 +1444,7 @@ async function start() {
   setInterval(async () => {
     if (
       status.workerRunning ||
+      status.workerOffline ||
       !available ||
       status.busy ||
       modalRoot.querySelector("dialog[open]")

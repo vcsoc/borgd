@@ -51,7 +51,9 @@ def main():
     with tempfile.TemporaryDirectory(prefix="borgd-native-") as temp:
         home = Path(temp) / "home"
         home.mkdir()
-        env = {**os.environ, "HOME": str(home), "XDG_CONFIG_HOME": str(Path(temp) / "config"), "XDG_DATA_HOME": str(Path(temp) / "data"), "XDG_CACHE_HOME": str(Path(temp) / "cache"), "XDG_STATE_HOME": str(Path(temp) / "state"), "SHELL": "/bin/bash"}
+        runtime = Path(temp) / "runtime"
+        runtime.mkdir(mode=0o700)
+        env = {**os.environ, "XDG_RUNTIME_DIR": str(runtime), "HOME": str(home), "XDG_CONFIG_HOME": str(Path(temp) / "config"), "XDG_DATA_HOME": str(Path(temp) / "data"), "XDG_CACHE_HOME": str(Path(temp) / "cache"), "XDG_STATE_HOME": str(Path(temp) / "state"), "SHELL": "/bin/bash"}
         log_path = Path("test-results/native-driver.log")
         log_path.parent.mkdir(exist_ok=True)
         with log_path.open("w") as log:
@@ -327,6 +329,37 @@ def main():
                     assert pending.result(timeout=60)["exitCode"] == 0
                     assert worker.wait(timeout=60) == 0
                 print("PASS: worker SIGTERM waits for an active real Borg check and persists its completion")
+                # A second desktop connects to a fresh worker; all startup files remain in the disposable XDG home.
+                created = request("POST", "/session", {"capabilities": {"alwaysMatch": {"tauri:options": {"application": str(Path(args.application).resolve())}}}})
+                session = created["sessionId"]
+                root = f"/session/{session}"
+                until(lambda: js("return !!document.querySelector('[data-route=\"settings\"]')"))
+                def service_action(action):
+                    js("window.__serviceOutcome=null; window.__TAURI_INTERNALS__.invoke('worker_service_action',{action:arguments[0]}).then(value=>window.__serviceOutcome={value}).catch(error=>window.__serviceOutcome={error:String(error)})", [action])
+                    outcome = until(lambda: js("return window.__serviceOutcome"), seconds=60)
+                    assert "error" not in outcome, outcome
+                    return outcome["value"]
+                js("window.__servicePlan=null; window.__TAURI_INTERNALS__.invoke('worker_service_info').then(value=>window.__servicePlan=value)")
+                planned = until(lambda: js("return window.__servicePlan"))
+                assert planned["manager"].startswith("XDG") and Path(planned["definition"]).is_relative_to(Path(temp)), planned
+                before_config = worker_rpc("get_config")
+                registered = service_action("register")
+                assert registered["manager"].startswith("XDG"), registered
+                assert Path(registered["definition"]).is_relative_to(Path(temp))
+                assert registered["registered"] and Path(registered["definition"]).is_file()
+                stopped = service_action("stop")
+                assert not stopped["running"] and stopped["paused"]
+                started = service_action("start")
+                assert started["running"] and not started["paused"]
+                assert worker_rpc("get_status")["unlocked"] == []
+                assert worker_rpc("get_config") == before_config
+                removed = service_action("uninstall")
+                assert not removed["running"] and not removed["registered"]
+                assert not Path(registered["definition"]).exists()
+                print("PASS: real isolated XDG registration, graceful stop, restart with cleared passphrases, and uninstall preserve repository/profile configuration")
+                request("DELETE", root, {})
+                session = None
+
             finally:
                 if session:
                     try:

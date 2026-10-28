@@ -3,14 +3,34 @@ mod engine;
 mod host;
 mod installer;
 mod relocation;
+mod service;
 mod terminal;
 mod worker;
+#[cfg(any(windows, test))]
+mod worker_tls;
 use engine::{Config, Request};
 use serde_json::{json, Value};
 use std::sync::Arc;
 use tauri::Manager;
 use worker::EngineState;
 
+#[tauri::command]
+async fn worker_service_info(state: tauri::State<'_, Arc<EngineState>>) -> Result<Value, String> {
+    let directory = state.directory()?;
+    tauri::async_runtime::spawn_blocking(move || service::info(&directory))
+        .await
+        .map_err(|e| e.to_string())?
+}
+#[tauri::command]
+async fn worker_service_action(
+    state: tauri::State<'_, Arc<EngineState>>,
+    action: String,
+) -> Result<Value, String> {
+    let directory = state.directory()?;
+    tauri::async_runtime::spawn_blocking(move || service::change(&directory, &action))
+        .await
+        .map_err(|e| e.to_string())?
+}
 #[tauri::command]
 fn get_config(state: tauri::State<'_, Arc<EngineState>>) -> Result<Value, String> {
     state.call("get_config", Value::Null)
@@ -238,6 +258,8 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            worker_service_info,
+            worker_service_action,
             open_project_url,
             get_config,
             save_config,

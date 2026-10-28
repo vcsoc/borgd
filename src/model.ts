@@ -113,6 +113,7 @@ export interface Relocation {
 }
 export interface Status {
   workerRunning?: boolean;
+  workerOffline?: boolean;
   busy: boolean;
   action: string;
   logs: string[];

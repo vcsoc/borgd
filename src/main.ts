@@ -135,6 +135,7 @@ import "./compact.css";
 import "./repository-redesign.css";
 import "./themes.css";
 import "./help.css";
+import { openColorEditor } from "./color-editor";
 import { helpView, selectHelpTopic } from "./help";
 import {
   applyTheme,
@@ -1725,6 +1726,17 @@ async function handleAction(action: string, element: HTMLElement) {
   }
 }
 document.addEventListener("click", (event) => {
+  const colorInput = (event.target as HTMLElement).closest<HTMLInputElement>("input[data-theme-color]");
+  if (colorInput) {
+    event.preventDefault();
+    const token = colorInput.dataset.themeColor!;
+    openColorEditor(colorInput, color => {
+      setCustomColor(token, color);
+      redrawThemeStudio(`[data-theme-color="${CSS.escape(token)}"]`);
+    });
+    return;
+  }
+
   const element = (event.target as HTMLElement).closest<HTMLElement>(
     "[data-action], [data-route], [data-repo]",
   );

@@ -134,6 +134,8 @@ import "./repository-workspace.css";
 import "./compact.css";
 import "./repository-redesign.css";
 import "./themes.css";
+import "./help.css";
+import { helpView, selectHelpTopic } from "./help";
 import {
   applyTheme,
   themeStudioView,
@@ -282,6 +284,17 @@ function empty(title: string, description: string, action = "") {
   return `<div class="empty">${icon("archive")}<h2>${title}</h2><p>${description}</p>${action}</div>`;
 }
 function render() {
+  const aboutState =
+    route === "about" && app.querySelector(".about-page")
+      ? {
+          license:
+            app.querySelector<HTMLDetailsElement>(".about-license")?.open ??
+            false,
+          content: app.querySelector(".content")?.scrollTop ?? 0,
+          article: app.querySelector(".help-detail")?.scrollTop ?? 0,
+          bookmarks: app.querySelector(".help-bookmarks")?.scrollTop ?? 0,
+        }
+      : null;
   closeArchiveMenu();
   const quickScroll = new Map(
     [...app.querySelectorAll<HTMLElement>("[data-quick-profiles]")].map(
@@ -332,6 +345,21 @@ function render() {
     .join(
       "",
     )}</nav></aside><main><header class="toolbar"><button class="top-brand" data-route="about" aria-label="About borgd" title="About borgd"><strong>borgd</strong><span class="version">0.1</span><span class="brand-tagline">BACKUP COMPANION</span></button><div class="top-tools"><div class="engine-status" role="status" title="${e(status.busy ? `${version} · Operation in progress` : version)}"><span class="dot ${status.busy ? "amber pulse" : available ? "green" : "amber"}"></span><span>${e(version)}</span>${status.busy ? '<span id="running-label">Working</span>' : ""}</div>${topIcon("Theme Studio", "palette", 'data-action="theme-studio"')}${topIcon("Terminal", "terminal", `data-action="toggle-terminal" aria-expanded="${terminalDock.visible}"`)}${topIcon("Settings & help", "settings-2", 'data-route="settings"')}</div></header><div class="content ${route === "activity" || route === "archiveFiles" ? "activity-content" : ""}"><div class="page-heading"><div><div class="eyebrow">YOUR BACKUP WORKSPACE</div><h1>${pages[route][0]}</h1><p>${pages[route][1]}</p></div>${route === "archiveDiff" ? button("Back to archives", "diff-back", "arrow-left") : route === "archiveFiles" ? button("Back to archives", "archive-back", "arrow-left") : route === "repositories" ? button("Add repository", "add-repo", "plus", status.busy ? "disabled" : "", true) : ""}</div>${initialized && !available && isFreshInstallation(config, status.history) ? `<div class="notice">${icon("info")}<div><strong>${isTauri() ? "Borg needs a little setup" : "Desktop preview"}</strong><p>${isTauri() ? e(error || "Looking for Borg 1.x on this computer.") : "This is the browser preview. Run the Tauri desktop app to connect repositories and execute real backups."}</p></div>${button("Setup guide", "setup", "arrow-up-right")}</div>` : ""}<div id="view">${view()}</div></div><footer><span>${icon("lock-keyhole")} Passphrases stay in memory, never on disk.</span><span id="footer-status">${status.busy ? (status.workerRunning ? "Backup worker is running. You may close this window." : "Keep borgd open until this operation finishes.") : status.workerRunning ? "Background backup worker connected" : status.workerOffline ? "Background worker stopped — Start it in Settings" : "Powered by Borg Backup"}</span></footer></main></div>`;
+  if (route === "about") {
+    app.querySelector(".page-heading")?.remove();
+    if (aboutState) {
+      const license = app.querySelector<HTMLDetailsElement>(".about-license");
+      if (license) license.open = aboutState.license;
+      for (const [selector, top] of [
+        [".content", aboutState.content],
+        [".help-detail", aboutState.article],
+        [".help-bookmarks", aboutState.bookmarks],
+      ] as const) {
+        const node = app.querySelector(selector);
+        if (node) node.scrollTop = top;
+      }
+    }
+  }
   if (route === "archiveFiles" && !archiveLoading && !archiveError) {
     const browserRoot = app.querySelector<HTMLElement>("#archive-browser-root");
     if (browserRoot)
@@ -384,7 +412,7 @@ function render() {
 }
 function view(): string {
   if (route === "about")
-    return `<section class="about-page"><h2>borgd <small>0.1.0</small></h2><p>Developed by Chris Visser</p><a href="https://github.com/vcsoc/borgd" data-action="open-project" class="project-link">${icon("github")}https://github.com/vcsoc/borgd</a><h3>License</h3><pre class="license-text">${e(licenseText)}</pre></section>`;
+    return `<section class="about-page" aria-label="About borgd"><h2>borgd <small>0.1.0</small></h2><p class="about-description">borgd is a desktop companion for Borg Backup. Create encrypted, deduplicated backups to local or SSH repositories, schedule profiles in the background, compare snapshots, and restore the files you need.</p><p>Developed by Chris Visser</p><a href="https://github.com/vcsoc/borgd" data-action="open-project" class="project-link">${icon("github")}https://github.com/vcsoc/borgd</a><details class="about-license"><summary>License</summary><pre class="license-text">${e(licenseText)}</pre></details><section class="about-help" aria-label="Help"><h3>Help</h3><div id="about-help-content">${helpView()}</div></section></section>`;
   if (route === "repositories") return repositories();
   if (route === "activity") return activity();
   if (route === "archiveFiles") return archiveFilesView();
@@ -1536,6 +1564,20 @@ async function handleAction(action: string, element: HTMLElement) {
     case "install-borg":
       await offerBorgInstall();
       break;
+    case "help-topic": {
+      selectHelpTopic(element.dataset.topic ?? "");
+      const host = document.querySelector("#about-help-content");
+      if (host) {
+        const scroll = host.querySelector(".help-bookmarks")?.scrollTop ?? 0;
+        host.innerHTML = helpView();
+        const bookmarks = host.querySelector(".help-bookmarks");
+        if (bookmarks) bookmarks.scrollTop = scroll;
+        host
+          .querySelector<HTMLElement>("[aria-current=true]")
+          ?.focus({ preventScroll: true });
+      }
+      break;
+    }
     case "theme-studio":
       route = "settings";
       render();

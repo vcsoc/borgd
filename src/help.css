@@ -1,0 +1,133 @@
+.about-page .about-description {
+  max-width: 80ch;
+  color: var(--muted);
+  line-height: 1.8;
+  margin: 14px 0;
+}
+.about-license {
+  margin-top: 28px;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+.about-license summary {
+  cursor: pointer;
+  padding: 18px 0;
+  font-weight: 600;
+  color: var(--text);
+}
+.about-license summary:focus-visible,
+.help-bookmarks button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+.about-license .license-text {
+  margin: 0 0 20px;
+  color: var(--muted);
+}
+.about-help {
+  margin-top: 28px;
+}
+.about-help > h3 {
+  margin: 0 0 16px;
+}
+.help-workspace {
+  display: grid;
+  grid-template-columns: 190px minmax(0, 1fr);
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+.help-bookmarks {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 14px 12px 14px 0;
+  border-right: 1px solid var(--line);
+  max-height: 590px;
+  overflow-y: auto;
+}
+.help-bookmarks button {
+  background: transparent;
+  border: 0;
+  border-left: 2px solid transparent;
+  border-radius: 0;
+  color: var(--muted);
+  text-align: left;
+  padding: 10px 9px;
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+.help-bookmarks button:hover,
+.help-bookmarks button[aria-current="true"] {
+  background: var(--selection);
+  color: var(--accent);
+  border-left-color: var(--accent);
+}
+.help-detail {
+  min-width: 0;
+  max-height: 590px;
+  overflow-y: auto;
+  padding: 20px 24px;
+  scroll-behavior: auto;
+}
+.help-detail h4 {
+  margin: 0 0 12px;
+  font-size: 1.1rem;
+  color: var(--text);
+}
+.help-detail h5 {
+  margin: 24px 0 10px;
+  font-size: 0.85rem;
+  color: var(--text);
+}
+.help-detail p,
+.help-detail li {
+  color: var(--muted);
+  font-size: 0.85rem;
+  line-height: 1.85;
+}
+.help-detail ol {
+  padding-left: 24px;
+}
+.help-detail li {
+  padding-left: 5px;
+  margin-bottom: 10px;
+}
+.help-detail .help-example {
+  margin: 0;
+  padding: 15px;
+  background: var(--code);
+  color: var(--text);
+  border-left: 2px solid var(--accent);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: inherit;
+  font-size: 0.8rem;
+  line-height: 1.8;
+}
+.help-note {
+  border-top: 1px solid var(--line);
+  padding-top: 16px;
+}
+.help-note strong {
+  color: var(--text);
+}
+@media (max-width: 650px) {
+  .help-workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .help-bookmarks {
+    flex-direction: row;
+    flex-wrap: wrap;
+    max-height: 180px;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+    padding: 10px 0;
+  }
+  .help-bookmarks button {
+    padding: 8px;
+  }
+  .help-detail {
+    max-height: none;
+    padding: 18px 0;
+  }
+}

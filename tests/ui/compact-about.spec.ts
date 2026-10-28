@@ -139,7 +139,7 @@ test("top branding opens inline About with developer, GitHub link and exact cust
   await desktop(page);
   await page.getByRole("button", { name: "About borgd", exact: true }).click();
   await expect(
-    page.getByRole("heading", { name: "About borgd", exact: true }),
+    page.getByRole("region", { name: "About borgd", exact: true }),
   ).toBeVisible();
   await expect(
     page.getByText("Developed by Chris Visser", { exact: true }),

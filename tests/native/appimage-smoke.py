@@ -311,6 +311,11 @@ def main():
                 until(lambda: js("return document.documentElement.dataset.zoom === '1'"))
                 js("document.querySelector('[data-route=\"about\"]').click()")
                 assert js("return document.querySelector('.about-page').textContent.includes('Developed by Chris Visser') && document.querySelector('.license-text').textContent.includes('prior written approval') && !!document.querySelector('.project-link svg')")
+                assert js("return !document.querySelector('.page-heading') && document.querySelector('.about-description').textContent.includes('Borg Backup') && !document.querySelector('.about-license').open")
+                js("document.querySelector('.about-license summary').click()")
+                assert js("return document.querySelector('.about-license').open")
+                js("document.querySelector('.about-license summary').click(); document.querySelector('[data-action=\"help-topic\"][data-topic=restore]').click()")
+                assert js("return document.querySelector('.help-detail h4').textContent==='Restore files' && document.querySelector('.help-detail').textContent.includes('empty destination') && !!document.querySelector('.help-example')")
                 Path("test-results/native-about.png").write_bytes(base64.b64decode(request("GET", root + "/screenshot")))
                 print("PASS: native webview zoom/reset and inline About with developer attribution, GitHub link and custom license")
 

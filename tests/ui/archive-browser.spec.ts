@@ -125,9 +125,9 @@ test("full workspace and right-click restore preserve multi-selection and requir
   const root = (await page.locator(".archive-explorer").boundingBox())!;
   const main = (await page.locator("main").boundingBox())!;
   const top = (await page.locator(".toolbar").boundingBox())!;
-  expect(Math.abs(root.x - main.x)).toBeLessThan(2);
-  expect(Math.abs(root.y - (top.y + top.height))).toBeLessThan(2);
-  expect(Math.abs(root.width - main.width)).toBeLessThan(2);
+  expect(Math.abs(root.x - main.x - 6)).toBeLessThan(2);
+  expect(Math.abs(root.y - (top.y + top.height) - 6)).toBeLessThan(2);
+  expect(Math.abs(root.width - main.width + 12)).toBeLessThan(2);
   const contents = page.getByRole("region", {
     name: "Folder contents",
     exact: true,

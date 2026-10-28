@@ -1,6 +1,13 @@
-# borgd 0.1.0
+# borgd 0.1.1
 
 A repository-centered desktop companion for Borg Backup 1.x.
+
+## Latest changes
+
+- Activity uses a two-column layout: recent activity on the left, operation log on the right.
+- Every page uses approximately 6px outer padding, including the archive browser.
+- Selected-path restores pass negative exclusion patterns safely to older Borg 1.x argument parsers.
+- Unix-only Borg integration tests are correctly gated when building Windows packages.
 
 ## Features
 

@@ -82,10 +82,10 @@ Output: `src-tauri/target/release/bundle/`. Signing/notarization credentials are
 On Linux:
 
 ```sh
-chmod +x borgd_0.1.0_amd64.AppImage
-./borgd_0.1.0_amd64.AppImage
+chmod +x borgd_0.1.1_amd64.AppImage
+./borgd_0.1.1_amd64.AppImage
 # Without FUSE:
-./borgd_0.1.0_amd64.AppImage --appimage-extract-and-run
+./borgd_0.1.1_amd64.AppImage --appimage-extract-and-run
 ```
 
 ## Verification
@@ -112,7 +112,7 @@ A separate **native Linux AppImage** smoke test uses real WebKit, IPC, Borg, key
 
 ```sh
 cargo install tauri-driver --locked
-python3 tests/native/appimage-smoke.py --application src-tauri/target/release/bundle/appimage/borgd_0.1.0_amd64.AppImage
+python3 tests/native/appimage-smoke.py --application src-tauri/target/release/bundle/appimage/borgd_0.1.1_amd64.AppImage
 ```
 
 Screenshots and native driver logs land in `test-results/`.
@@ -262,3 +262,5 @@ Theme Studio places its single-column preview grid on the left and Custom contro
 Archive context menus use wider, full-width action rows. The diff comparison dropdown lists repository archives by creation date descending (unknown dates last); the selected snapshot is visible but disabled to prevent comparing it with itself. The diff Back button sits immediately to the left of the title.
 
 Backup profiles rows include a tooltip-labelled Preview prune action between Edit and Back up, matching Quick profiles. It uses the profile-scoped, non-destructive preview flow and requires confirmation before running; it does not apply retention or delete archives.
+
+The workspace uses 6px outer page padding. Activity places recent history on the left and the operation log on the right, each independently scrollable; narrow screens stack the panels.

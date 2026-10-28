@@ -724,9 +724,9 @@ impl Backend {
                             );
                         }
                         // Literal prefix patterns include a folder's descendants, never similarly named siblings or glob matches.
-                        args.extend(["--pattern".into(), format!("+pp:{selected}")]);
+                        args.push(format!("--pattern=+pp:{selected}"));
                     }
-                    args.extend(["--pattern".into(), "-re:.*".into()]);
+                    args.push("--pattern=-re:.*".into());
                 }
                 args.push(archive()?);
             }
@@ -958,6 +958,7 @@ pub fn probe() -> Result<String, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(unix)]
     #[test]
     fn real_borg_archive_diff_is_read_only_and_scoped() {
         if probe().is_err() {

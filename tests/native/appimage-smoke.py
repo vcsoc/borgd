@@ -171,7 +171,11 @@ def main():
                 js("document.querySelector('[data-action=\"check\"]').click()")
                 until(lambda: js("return !!document.querySelector('dialog[open] button[type=submit]')"))
                 js("document.querySelector('dialog[open] button[type=submit]').click()")
-                until(lambda: js("return !document.querySelector('dialog[open]') && document.querySelector('#check-progress')?.textContent.includes('Integrity check completed')"))
+                try:
+                    until(lambda: js("return !document.querySelector('dialog[open]') && document.querySelector('#check-progress')?.textContent.includes('Integrity check completed')"))
+                except AssertionError:
+                    Path("test-results/native-check-failure.txt").write_text(js("return document.body.textContent"))
+                    raise
                 assert js("return document.querySelector('#check-progress progress').value === 100")
                 assert invoke("get_status")["history"][0]["action"] == "check"
                 Path("test-results/native-check-progress.png").write_bytes(base64.b64decode(request("GET", root + "/screenshot")))

@@ -208,3 +208,53 @@ test("read-only root cause stays visible on the repository card", async ({
     "do not force-remount or delete locks",
   );
 });
+
+test("compact pages use six pixel padding and Activity places history left of a full-height log", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await activityDesktop(page);
+  expect(
+    await page.evaluate(() => {
+      const content = getComputedStyle(document.querySelector(".content")!);
+      const history = document
+        .querySelector(".activity-history-column")!
+        .getBoundingClientRect();
+      const log = document
+        .querySelector(".activity-log-column")!
+        .getBoundingClientRect();
+      return {
+        padding: [
+          content.paddingTop,
+          content.paddingRight,
+          content.paddingBottom,
+          content.paddingLeft,
+        ],
+        left: history.right <= log.left,
+        narrower: history.width < log.width,
+        aligned: Math.abs(history.top - log.top) < 2,
+      };
+    }),
+  ).toEqual({
+    padding: ["6px", "6px", "6px", "6px"],
+    left: true,
+    narrower: true,
+    aligned: true,
+  });
+  await page.screenshot({ path: "test-results/activity-two-columns.png" });
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(
+    await page.evaluate(() => {
+      const history = document
+        .querySelector(".activity-history-column")!
+        .getBoundingClientRect();
+      const log = document
+        .querySelector(".activity-log-column")!
+        .getBoundingClientRect();
+      return (
+        history.bottom <= log.top &&
+        document.documentElement.scrollWidth <= innerWidth
+      );
+    }),
+  ).toBe(true);
+});

@@ -347,6 +347,15 @@ function render() {
     .join(
       "",
     )}</nav></aside><main><header class="toolbar"><button class="top-brand" data-route="about" aria-label="About borgd" title="About borgd"><strong>borgd</strong><span class="version">0.1</span><span class="brand-tagline">BACKUP COMPANION</span></button><div class="top-tools"><div class="engine-status" role="status" title="${e(status.busy ? `${version} · Operation in progress` : version)}"><span class="dot ${status.busy ? "amber pulse" : available ? "green" : "amber"}"></span><span>${e(version)}</span>${status.busy ? '<span id="running-label">Working</span>' : ""}</div>${topIcon("Theme Studio", "palette", 'data-action="theme-studio"')}${topIcon("Terminal", "terminal", `data-action="toggle-terminal" aria-expanded="${terminalDock.visible}"`)}${topIcon("Settings & help", "settings-2", 'data-route="settings"')}</div></header><div class="content ${route === "activity" || route === "archiveFiles" ? "activity-content" : ""}"><div class="page-heading"><div><div class="eyebrow">YOUR BACKUP WORKSPACE</div><h1>${pages[route][0]}</h1><p>${pages[route][1]}</p></div>${route === "archiveDiff" ? button("Back to archives", "diff-back", "arrow-left") : route === "archiveFiles" ? button("Back to archives", "archive-back", "arrow-left") : route === "repositories" ? button("Add repository", "add-repo", "plus", status.busy ? "disabled" : "", true) : ""}</div>${initialized && !available && isFreshInstallation(config, status.history) ? `<div class="notice">${icon("info")}<div><strong>${isTauri() ? "Borg needs a little setup" : "Desktop preview"}</strong><p>${isTauri() ? e(error || "Looking for Borg 1.x on this computer.") : "This is the browser preview. Run the Tauri desktop app to connect repositories and execute real backups."}</p></div>${button("Setup guide", "setup", "arrow-up-right")}</div>` : ""}<div id="view">${view()}</div></div><footer><span>${icon("lock-keyhole")} Passphrases stay in memory, never on disk.</span><span id="footer-status">${status.busy ? (status.workerRunning ? "Backup worker is running. You may close this window." : "Keep borgd open until this operation finishes.") : status.workerRunning ? "Background backup worker connected" : status.workerOffline ? "Background worker stopped — Start it in Settings" : "Powered by Borg Backup"}</span></footer></main></div>`;
+  if (route === "archiveDiff") {
+    const heading = app.querySelector(".page-heading")!;
+    const title = heading.querySelector("h1")!;
+    const back = heading.querySelector('[data-action="diff-back"]')!;
+    const row = document.createElement("div");
+    row.className = "diff-title-row";
+    title.replaceWith(row);
+    row.append(back, title);
+  }
   if (route === "about") {
     app.querySelector(".page-heading")?.remove();
     if (aboutState) {
@@ -672,9 +681,8 @@ async function goToDiffItem(entry: ArchiveDiffEntry) {
   );
 }
 function archiveDiffView() {
-  const choices = (archives[diffRepository] ?? []).filter(
-    (a) => a.name !== diffSelected,
-  );
+  const ordered = sortArchives(archives[diffRepository] ?? [], "time", "desc");
+  const choices = ordered.filter((a) => a.name !== diffSelected);
   const changes = (entry: ArchiveDiffEntry) =>
     entry.changes
       .map((change) => {
@@ -689,7 +697,7 @@ function archiveDiffView() {
         return `<span class="diff-change" data-change="${e(type)}"><strong>${e(type.replaceAll("_", " "))}</strong>${details ? ` · ${e(details)}` : ""}</span>`;
       })
       .join("");
-  return `<section class="archive-diff" aria-label="Archive comparison"><p class="archive-diff-context"><strong>${e(repo(diffRepository)?.name)}</strong> · Selected archive: <code>${e(diffSelected)}</code></p><p class="muted">File-level Borg comparison: added, removed, changed files and metadata; not a line-by-line text patch. Direction: comparison archive → selected archive.</p><div class="archive-diff-controls"><label class="field">Compare with<select id="diff-base" ${diffLoading ? "disabled" : ""}>${choices.length ? choices.map((a) => `<option value="${e(a.name)}" ${a.name === diffBase ? "selected" : ""}>${e(a.name)}</option>`).join("") : '<option value="">No other archives available</option>'}</select></label>${button("Compare archives", "diff-run", "git-compare-arrows", `${disabled()} ${!diffBase || diffLoading || !diffSupported() ? "disabled" : ""}`)}</div>${
+  return `<section class="archive-diff" aria-label="Archive comparison"><p class="archive-diff-context"><strong>${e(repo(diffRepository)?.name)}</strong> · Selected archive: <code>${e(diffSelected)}</code></p><p class="muted">File-level Borg comparison: added, removed, changed files and metadata; not a line-by-line text patch. Direction: comparison archive → selected archive.</p><div class="archive-diff-controls"><label class="field">Compare with<select id="diff-base" ${diffLoading ? "disabled" : ""}>${ordered.length ? ordered.map((a) => `<option value="${e(a.name)}" ${a.name === diffBase ? "selected" : ""} ${a.name === diffSelected ? "disabled" : ""}>${e(a.name)}${a.name === diffSelected ? " (selected archive)" : ""}</option>`).join("") : '<option value="">No other archives available</option>'}</select></label>${button("Compare archives", "diff-run", "git-compare-arrows", `${disabled()} ${!diffBase || diffLoading || !diffSupported() ? "disabled" : ""}`)}</div>${
     !choices.length
       ? '<p role="status">At least two archives in this repository are needed for a diff.</p>'
       : !diffSupported()

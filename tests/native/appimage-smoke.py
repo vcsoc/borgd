@@ -236,6 +236,7 @@ def main():
                 print("PASS: native archive panel automatically loads on opening, defaults to date descending, and displays real Borg counts and sizes")
                 js("document.querySelector('.archive-table tbody tr[data-archive-row]').dispatchEvent(new MouseEvent('contextmenu',{bubbles:true,cancelable:true,clientX:400,clientY:420}))")
                 until(lambda: js("return !!document.querySelector('[role=menu][aria-label=\"Archive actions\"]')"))
+                assert js("const menu=document.querySelector('[role=menu]'); const box=menu.getBoundingClientRect(); return box.width>=200 && [...menu.querySelectorAll('button')].every(item=>item.getBoundingClientRect().width>=box.width-14)")
                 js("[...document.querySelectorAll('[role=menuitem]')].find(item => item.textContent === 'View diff').click()")
                 try:
                     until(lambda: js("return !!document.querySelector('.archive-diff') && !document.querySelector('.archive-diff .repository-error') && (!!document.querySelector('.archive-diff-table') || document.querySelector('.archive-diff').textContent.includes('No differences found between these archives.'))"))
@@ -243,6 +244,7 @@ def main():
                     Path("test-results/native-diff-failure.txt").write_text(js("return document.querySelector('.content').textContent"))
                     raise
                 assert worker_rpc("get_status")["history"][0]["action"] == "diff"
+                assert js("const back=document.querySelector('[data-action=\"diff-back\"]').getBoundingClientRect(); const title=document.querySelector('.page-heading h1').getBoundingClientRect(); const options=[...document.querySelector('#diff-base').options]; return back.right<title.left && options.length===2 && options[0].disabled")
                 Path("test-results/native-archive-diff.png").write_bytes(base64.b64decode(request("GET", root + "/screenshot")))
                 js("const row=[...document.querySelectorAll('.archive-diff-table tbody tr')].find(row=>row.textContent.includes('not-selected.txt')); row.dispatchEvent(new MouseEvent('contextmenu',{bubbles:true,cancelable:true,clientX:400,clientY:350}))")
                 js("[...document.querySelectorAll('[role=menuitem]')].find(item=>item.textContent === 'Go to').click()")

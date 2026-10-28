@@ -58,10 +58,14 @@ main:has(.archive-full-content) > footer {
   border-radius: 6px;
   background: #252b35;
   box-shadow: 0 12px 40px #0008;
+  min-width: min(200px, calc(100vw - 16px));
   max-width: calc(100vw - 16px);
 }
 .archive-context-menu button {
   display: block;
+  width: 100%;
+  text-align: left;
+  overflow-wrap: anywhere;
   padding: 11px 14px;
   background: transparent;
   border: 0;

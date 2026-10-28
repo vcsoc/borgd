@@ -264,8 +264,8 @@ mod tests {
             let mut startup = String::new();
             while std::time::Instant::now() < deadline {
                 startup.push_str(&String::from_utf8_lossy(&terminals.read(id).unwrap().data));
-                if startup.contains("\u001b[6n") {
-                    terminals.write(id, "\u001b[1;1R".into()).unwrap();
+                if startup.contains("\x1b[6n") {
+                    terminals.write(id, "\x1b[1;1R".into()).unwrap();
                     break;
                 }
                 std::thread::sleep(std::time::Duration::from_millis(20));

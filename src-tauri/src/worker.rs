@@ -464,6 +464,13 @@ mod platform {
             match listener.accept() {
                 Ok((stream, _)) => {
                     if connections.len() < 32 {
+                        // macOS inherits the listener's nonblocking mode on accepted
+                        // sockets. Per-connection threads require blocking I/O so
+                        // write_all waits for the client rather than truncating replies.
+                        if let Err(error) = stream.set_nonblocking(false) {
+                            failure = Some(format!("Worker connection setup failed: {error}"));
+                            break;
+                        }
                         #[cfg(windows)]
                         let stream =
                             Stream::server(stream, tls.clone()).map_err(|e| e.to_string())?;
@@ -520,6 +527,32 @@ mod platform {
             assert!(text.contains("KillMode=process"));
             assert!(text.contains("TimeoutStopSec=infinity"));
             assert!(quote("bad\npath").is_err());
+        }
+        #[test]
+        fn real_worker_rpc_transfers_large_responses_without_truncation() {
+            let dir = tempfile::tempdir().unwrap();
+            let name = "large response fixture ".repeat(24_000);
+            let config = json!({"repositories": [{"id": "r", "name": name,
+                "location": "/tmp/worker-test-repository"}], "profiles": []});
+            fs::write(
+                dir.path().join("config.json"),
+                serde_json::to_vec(&config).unwrap(),
+            )
+            .unwrap();
+            let backend = Backend::new(dir.path().into());
+            let flag = Arc::new(AtomicBool::new(false));
+            let stop = flag.clone();
+            let server = thread::spawn(move || serve(backend, stop));
+            for _ in 0..100 {
+                if socket(dir.path()).exists() {
+                    break;
+                }
+                thread::sleep(Duration::from_millis(20));
+            }
+            let response = call(dir.path(), "get_config", Value::Null);
+            flag.store(true, Ordering::SeqCst);
+            server.join().unwrap().unwrap();
+            assert_eq!(response.unwrap()["repositories"][0]["name"], name);
         }
         #[test]
         fn real_worker_rpc_serializes_state_and_holds_an_exclusive_lock() {
